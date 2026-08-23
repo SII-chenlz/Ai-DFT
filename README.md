@@ -13,6 +13,7 @@ AIFS（AI Functional Selection）是一个面向分子量子化学的智能体�
 ## 环境要求
 
 - macOS 或 Linux
+- Windows 10/11：通过 WSL2（推荐 Ubuntu）支持；当前不支持原生 PowerShell 启动脚本
 - Git
 - Conda（Miniconda 或 Anaconda）
 - Node.js 22.12 或更高版本（包含 Corepack）
