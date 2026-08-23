@@ -115,3 +115,7 @@ pytest backend/tests -q
 (cd dsh-plugin-aifs && npm test)
 (cd dsh-plugin-aifs && npm run typecheck)
 ```
+
+## License
+
+本项目采用 [MIT License](LICENSE)。
