@@ -1,76 +1,117 @@
-# AIFS（AI 泛函智选引擎）
+# AIFS
 
-AIFS 是面向分子量子化学计算的对话式泛函推荐产品。当前 MVP 目标是打通：
+AIFS（AI Functional Selection）是一个面向分子量子化学的智能体原型。当前版本可以通过 DeepSeek Harness 对话界面生成并独立校验 [REST](https://gitee.com/restgroup/rest) 的 TOML 输入卡。
 
-```text
-自然语言需求
-→ DeepSeek Harness Agent
-→ AIFS 工具
-→ FastAPI
-→ REST TOML 输入卡生成与校验
-```
-
-## 目录
+当前版本**只生成和校验输入卡**，不执行 REST 计算，也尚未接入知识图谱或文献 RAG。
 
 ```text
-harness/                              # 普通容器目录，不是 Git 仓库
-├── deepseek-harness/                  # 官方上游 Git 仓库
-├── AIFS-DeepSeek-Harness-开发规划.md
-├── DeepSeek-Harness-开发方式与AIFS产品化路线.md
-├── AIFS-DeepSeek-Harness-完整架构规格.md
-└── AIFS/                            # 本仓库：AIFS 独立产品
-    ├── backend/                    # FastAPI 领域后端
-    ├── dsh-plugin-aifs/            # Harness 工具插件
-    ├── profiles/                   # AIFS Harness profile/patch
-    ├── scripts/                    # 本地启动和检查脚本
-    ├── tasks/deepseek/             # 交给 DeepSeek 的自包含任务
-    └── prototype-v0/               # 只读保留的旧 VASP/QE 原型
+自然语言需求 → DeepSeek Harness → AIFS Tool → FastAPI
+                                           ↓
+                              REST TOML 输入卡生成与校验
 ```
 
-## 当前开发边界
+## 环境要求
 
-- 目标量化软件只有 REST。
-- 第一阶段使用 DeepSeek Harness 自带 Web UI。
-- 后端使用 Python 3.11+、FastAPI 和 Pydantic。
-- Harness 通过独立 TypeScript 插件调用 FastAPI。
-- 当前不实现知识图谱、文献 RAG、REST 计算执行或公网部署。
-- 不修改同级目录 `../deepseek-harness/` 中的任何上游文件。
+- macOS 或 Linux
+- Git
+- Conda（Miniconda 或 Anaconda）
+- Node.js 22.12 或更高版本（包含 Corepack）
 
-## 文档
+## 安装
 
-1. [AIFS × DeepSeek Harness 开发规划](../AIFS-DeepSeek-Harness-开发规划.md)
-2. [DeepSeek Harness 开发方式与 AIFS 产品化路线](../DeepSeek-Harness-开发方式与AIFS产品化路线.md)
-3. [完整中文架构规格](../AIFS-DeepSeek-Harness-完整架构规格.md)
+建议将 AIFS 和官方 DeepSeek Harness 克隆到同一个目录下：
 
-实施与交接材料：
-
-- [DeepSeek 首批任务：FastAPI 与 REST 核心](tasks/deepseek/001-fastapi-rest-core.md)
-
-## 开发顺序
-
-1. DeepSeek 完成 `tasks/deepseek/001-fastapi-rest-core.md`。
-2. Codex 审查 commit、接口、REST 规则和测试。
-3. 审查通过后实现 AIFS Harness 插件和 Agent Prompt。
-4. 端到端流程稳定后再接入知识图谱和计算执行器。
-
-## 直接本地测试
-
-复制 `.env.example` 为 `.env.local`，填写 `DEEPSEEK_API_KEY`，并按需要填写 `AIFS_BASIS_SET_POOL`。然后：
-
-```bash
-./scripts/check-local.sh       # 后端已启动时检查生成/校验链路
-./scripts/start-local.sh       # 安装本地插件并启动 Harness Web
-./scripts/verify-harness-mount.sh --require-installed
+```text
+workspace/
+├── AIFS/
+└── deepseek-harness/
 ```
 
-默认端口是 Harness `127.0.0.1:3080`、AIFS FastAPI `127.0.0.1:8000`。密钥只从环境变量读取，不能提交到 Git。
+```bash
+mkdir aifs-workspace
+cd aifs-workspace
+git clone https://github.com/SII-chenlz/Ai-DFT.git AIFS
+git clone https://github.com/deepseek-ai/deepseek-harness.git deepseek-harness
+```
 
-## 旧原型
-
-`prototype-v0/` 是前期 VASP/QE 原型，仅作为 Pydantic、DeepSeek 客户端和测试风格参考。新代码不得继续扩展该目录。
-
-验证旧原型：
+### 1. 创建 Python 环境
 
 ```bash
-pytest prototype-v0/tests -q
+conda create -n aifs python=3.11 -y
+conda activate aifs
+cd AIFS
+python -m pip install -e './backend[dev]'
+```
+
+### 2. 安装并构建 DeepSeek Harness
+
+```bash
+cd ../deepseek-harness
+corepack enable
+pnpm install
+pnpm run build
+```
+
+如果终端提示找不到 `pnpm`，关闭并重新打开终端后再执行 `pnpm --version`。也可以先使用 `corepack pnpm --version` 检查 Node 的 Corepack 是否可用。
+
+### 3. 配置密钥
+
+回到 AIFS 目录：
+
+```bash
+cd ../AIFS
+cp .env.example .env.local
+```
+
+编辑 `.env.local`，只填写这一项：
+
+```bash
+DEEPSEEK_API_KEY=你的新密钥
+```
+
+`.env.local` 已被 Git 忽略，绝不能提交、截图或粘贴到聊天中。若密钥曾泄露，请在 DeepSeek 控制台撤销并重新生成。
+
+## 启动
+
+确认仍处于 `aifs` Conda 环境后运行：
+
+```bash
+conda activate aifs
+cd /你的路径/AIFS
+./scripts/start-local.sh
+```
+
+脚本会自动：
+
+1. 将本地 AIFS 插件挂载到 Harness Web profile；
+2. 启动 FastAPI 后端（`http://127.0.0.1:8000`）；
+3. 启动 Harness Web（`http://127.0.0.1:3080`）。
+
+浏览器没有自动打开时，访问 `http://127.0.0.1:3080`。使用 `Ctrl+C` 停止服务。
+
+## 常用本地检查
+
+另开一个已激活 `aifs` 环境的终端：
+
+```bash
+./scripts/check-local.sh
+```
+
+该命令会调用本地后端，生成一张示例 REST TOML 输入卡并进行独立校验。
+
+## 项目结构
+
+```text
+backend/             FastAPI：REST 规则、输入卡生成与校验
+dsh-plugin-aifs/     TypeScript：DeepSeek Harness Tool 插件
+profiles/            可选 Harness profile 配置
+scripts/             本地启动与检查脚本
+```
+
+## 开发验证
+
+```bash
+pytest backend/tests -q
+(cd dsh-plugin-aifs && npm test)
+(cd dsh-plugin-aifs && npm run typecheck)
 ```

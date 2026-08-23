@@ -10,7 +10,8 @@ dist/
 build/
 *.egg-info/
 .env
-.env.local
+.env.*
+!.env.example
 .dsh-home/
 .local/
 *.log
