@@ -4,6 +4,10 @@ AIFS（AI Functional Selection）是一个面向分子量子化学的智能体�
 
 当前版本**只生成和校验输入卡**，不执行 REST 计算，也尚未接入知识图谱或文献 RAG。
 
+## 本地界面
+
+![AIFS 在 DeepSeek Harness Web 中运行的本地界面](assets/aifs-harness-home.png)
+
 ```text
 自然语言需求 → DeepSeek Harness → AIFS Tool → FastAPI
                                            ↓
@@ -116,3 +120,9 @@ pytest backend/tests -q
 (cd dsh-plugin-aifs && npm test)
 (cd dsh-plugin-aifs && npm run typecheck)
 ```
+
+## 贡献与致谢
+
+- 项目发起与维护：SII-chenlz
+- AI 辅助开发：ChatGPT（OpenAI）与 DeepSeek
+- 智能体运行框架：DeepSeek Harness
