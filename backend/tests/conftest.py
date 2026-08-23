@@ -48,3 +48,15 @@ def make_request() -> Callable[..., RestInputRequest]:
         return RestInputRequest(**kwargs)
 
     return _make
+
+
+@pytest.fixture
+def request_payload() -> dict[str, Any]:
+    """A valid JSON payload for POST /v1/rest-inputs."""
+    return dict(VALID_REQUEST_KWARGS)
+
+
+@pytest.fixture
+def valid_card() -> str:
+    """A renderer-independent REST card accepted by the validator."""
+    return VALID_CARD
