@@ -96,3 +96,8 @@ export const z = {
     return new ObjectSchema(shape)
   },
 } as unknown as z
+
+// The official @deepseek-ai/schemastery package exposes this constructor as
+// its default export. Keep the named export for the local test shim, but make
+// the default export the compatibility contract used by the plugin.
+export default z

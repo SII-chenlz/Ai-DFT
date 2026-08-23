@@ -9,7 +9,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { z } from '@deepseek-ai/schemastery'
+import z from '@deepseek-ai/schemastery'
 import {
   AifsBackendClient,
   DEFAULT_BASE_URL,
@@ -38,7 +38,10 @@ export const Config = z.object({
   baseUrl: z.string().default(DEFAULT_BASE_URL),
   requestTimeoutMs: z.number().default(DEFAULT_REQUEST_TIMEOUT_MS),
   maxResponseBytes: z.number().default(DEFAULT_MAX_RESPONSE_BYTES),
-}) as unknown as z<Config>
+}) as unknown as ((data?: unknown) => Config) & {
+  /** Local shim convenience; the real schemastery schema is callable. */
+  parse(value: unknown): Config
+}
 
 /**
  * Install the AIFS REST tools. Registration goes through the tools registry

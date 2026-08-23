@@ -3,9 +3,9 @@
  * `Config` (string/number schemas with defaults inside `z.object`). The real
  * package resolves when the plugin is mounted into the harness workspace.
  *
- * `z` is declared twice, like the real package: the value is the schema
- * factory and the interface is the type-level helper (`z<Config>` names the
- * schema whose `parse` yields a `Config`).
+ * The real package exports its schema factory as the default export. This
+ * ambient declaration intentionally follows that public contract so
+ * `tsc` checks the plugin against the same import shape used by Harness.
  */
 declare module '@deepseek-ai/schemastery' {
   export interface ZSchema<T> {
@@ -23,12 +23,16 @@ declare module '@deepseek-ai/schemastery' {
   export interface ObjectSchema<S extends Record<string, ZSchema<unknown>>>
     extends ZSchema<{ [K in keyof S]: S[K] extends ZSchema<infer T> ? T : never }> {}
 
-  /** Type-level mirror of schemastery's `z<T>`. */
+  /** Type-level mirror retained for consumers that use the generic schema type. */
   export interface z<T = unknown> extends ZSchema<T> {
+  }
+
+  interface ZFactory {
     string(): StringSchema
     number(): NumberSchema
     object<S extends Record<string, ZSchema<unknown>>>(shape: S): ObjectSchema<S>
   }
 
-  export const z: z
+  const z: ZFactory
+  export default z
 }
