@@ -60,6 +60,7 @@ harness/                              # 普通容器目录，不是 Git 仓库
 ```bash
 ./scripts/check-local.sh       # 后端已启动时检查生成/校验链路
 ./scripts/start-local.sh       # 安装本地插件并启动 Harness Web
+./scripts/verify-harness-mount.sh --require-installed
 ```
 
 默认端口是 Harness `127.0.0.1:3080`、AIFS FastAPI `127.0.0.1:8000`。密钥只从环境变量读取，不能提交到 Git。

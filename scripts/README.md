@@ -30,3 +30,12 @@ cp .env.example .env.local
 ```
 
 首次启动会把本地 `dsh-plugin-aifs` 安装到隔离的 `$DSH_HOME` Web profile。脚本不会修改官方仓库中受跟踪的源码；Harness 需要先在其仓库内完成 `pnpm install` 和 `pnpm run build`。
+
+检查 bundle 是否已安装：
+
+```bash
+./scripts/verify-harness-mount.sh
+./scripts/verify-harness-mount.sh --require-installed
+```
+
+第一个命令只检查 AIFS bundle 源文件；第二个命令还要求 `$DSH_HOME/profiles/web` 已经安装了 AIFS。
