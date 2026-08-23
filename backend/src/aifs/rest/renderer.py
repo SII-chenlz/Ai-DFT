@@ -2,16 +2,49 @@
 
 The renderer only emits values from validated model fields and catalog
 entries; it never accepts or concatenates arbitrary user-provided TOML
-key/value fragments. Field order is fixed so snapshot-style assertions stay
+key/value fragments. The basis pool root comes from deployment settings
+(``require_basis_set_pool``), and basis names are checked so they cannot
+escape that root. Field order is fixed so snapshot-style assertions stay
 reliable.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
+from aifs.config import require_basis_set_pool
 from aifs.models import DomainValidationError, RestInputRequest, RestInputResponse
 from aifs.rest.catalogs import NO_DISPERSION_METHODS, default_basis, method_category
+
+#: Windows drive-letter prefixes; rejected because joining them to a POSIX
+#: pool root would silently produce an unrelated absolute path on Windows.
+_DRIVE_PREFIX = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def _check_basis_name(basis: str) -> None:
+    """Reject basis names that could escape the configured pool root.
+
+    ``Path(pool) / basis`` discards the pool when ``basis`` is absolute, and
+    ``..`` segments walk out of the pool directory; both would let a caller
+    point the card at an arbitrary filesystem location. Relative subpaths
+    inside the pool (e.g. ``aux/def2-SVP``) remain allowed.
+    """
+    parts = [part for part in re.split(r"[\\/]", basis) if part]
+    escapes = (
+        _DRIVE_PREFIX.match(basis) is not None
+        or Path(basis).is_absolute()
+        or any(part in (".", "..") for part in parts)
+    )
+    if escapes:
+        raise DomainValidationError(
+            code="basis_outside_pool",
+            message=(
+                "basis must stay inside the configured basis_set_pool: absolute "
+                "paths, drive letters and '.'/'..' segments are rejected; "
+                f"got {basis!r}"
+            ),
+        )
 
 
 def _escape_toml_string(value: str, *, multiline: bool) -> str:
@@ -46,6 +79,7 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
     if basis is None:
         basis = default_basis(category)
         defaults_applied.append(f"basis={basis}")
+    _check_basis_name(basis)
 
     if request.empirical_dispersion is not None and request.xc in NO_DISPERSION_METHODS:
         raise DomainValidationError(
@@ -61,7 +95,7 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
         spin_polarization = request.spin > 1
         defaults_applied.append(f"spin_polarization={str(spin_polarization).lower()}")
 
-    basis_path = str(Path(request.basis_set_pool) / basis)
+    basis_path = str(Path(require_basis_set_pool()) / basis)
 
     lines: list[str] = ["[ctrl]"]
     lines.append(f"xc = {_escape_toml_string(request.xc, multiline=False)}")

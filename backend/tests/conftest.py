@@ -1,18 +1,22 @@
 """Shared fixtures for the AIFS backend test suite."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
 
+from aifs.config import get_settings
 from aifs.models import RestInputRequest
+
+#: Value of AIFS_BASIS_SET_POOL injected into the process environment for
+#: every test, so the suite never depends on the developer's deployment.
+TEST_BASIS_SET_POOL = "/data/rest/basis_sets"
 
 VALID_REQUEST_KWARGS: dict[str, Any] = {
     "system_name": "water",
     "position": "O 0.0 0.0 0.0\nH 0.757 0.586 0.0\nH -0.757 0.586 0.0",
     "job_type": "energy",
     "xc": "B3LYP",
-    "basis_set_pool": "/data/rest/basis_sets",
 }
 
 # A minimal, renderer-independent REST card that every rule in the validator
@@ -36,6 +40,15 @@ O 0.0 0.0 0.0
 H 0.0 0.0 1.0
 \"\"\"
 """
+
+
+@pytest.fixture(autouse=True)
+def _pool_configured(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Point AIFS_BASIS_SET_POOL at a stable test path for every test."""
+    monkeypatch.setenv("AIFS_BASIS_SET_POOL", TEST_BASIS_SET_POOL)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture

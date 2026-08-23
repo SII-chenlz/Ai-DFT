@@ -8,6 +8,10 @@ Endpoints:
 - ``POST /v1/rest-inputs/validate``: independently validate a complete card;
   ``valid=false`` is a 200 domain result, never an infrastructure failure.
 
+Deployment misconfiguration (e.g. an unset ``AIFS_BASIS_SET_POOL``) returns
+500 with a stable JSON error; it is an infrastructure failure, not a domain
+one.
+
 The recommendation endpoint is deliberately absent; the recommender is
 implemented by a later task.
 """
@@ -18,6 +22,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from aifs.config import ConfigurationError
 from aifs.models import (
     DomainValidationError,
     RestInputRequest,
@@ -58,6 +63,16 @@ async def domain_validation_error_handler(
     return JSONResponse(
         status_code=422,
         content={"error": {"code": exc.code, "message": exc.message}},
+    )
+
+
+@app.exception_handler(ConfigurationError)
+async def configuration_error_handler(
+    request: Request, exc: ConfigurationError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "configuration_error", "message": exc.message}},
     )
 
 

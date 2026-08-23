@@ -1,0 +1,25 @@
+{
+  "name": "@aifs/dsh-plugin-aifs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cordis function plugin registering AIFS REST input tools (generate_rest_input, validate_rest_input) over HTTP.",
+  "main": "src/index.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

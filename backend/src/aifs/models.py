@@ -35,7 +35,9 @@ class RestInputRequest(BaseModel):
     """Structured request for rendering a REST TOML input card.
 
     Extra fields are rejected. ``xc`` is normalized to its canonical casing
-    and checked against the REST method catalog during validation.
+    and checked against the REST method catalog during validation. The basis
+    pool root is deployment configuration (``AIFS_BASIS_SET_POOL``), not a
+    request field: ``basis`` is only the name inside that pool.
     """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -45,7 +47,6 @@ class RestInputRequest(BaseModel):
     job_type: Literal["energy", "opt", "force", "numerical dipole"]
     xc: str
     basis: str | None = None
-    basis_set_pool: str
     charge: float = 0.0
     spin: int = Field(default=1, ge=1)
     spin_polarization: bool | None = None
@@ -72,13 +73,6 @@ class RestInputRequest(BaseModel):
             raise ValueError("position must not be empty")
         if len(value) > MAX_POSITION_LENGTH:
             raise ValueError(f"position must be at most {MAX_POSITION_LENGTH} characters")
-        return value
-
-    @field_validator("basis_set_pool")
-    @classmethod
-    def _check_basis_set_pool(cls, value: str) -> str:
-        if not value:
-            raise ValueError("basis_set_pool must not be empty")
         return value
 
     @field_validator("charge")

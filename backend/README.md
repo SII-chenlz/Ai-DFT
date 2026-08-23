@@ -13,6 +13,7 @@ Python FastAPI 领域后端，负责 REST 量子化学软件的输入卡领域�
 
 - 推荐 Python >= 3.11（`tomllib` 为标准库）；3.10 通过 `tomli` 兼容包运行（`pyproject.toml` 中按版本条件安装）。
 - 安装：`python -m pip install -e './backend[dev]'`（开发依赖包含 pytest、httpx、ruff、mypy）。
+- 配置：`AIFS_BASIS_SET_POOL` 环境变量（或 `.env`，见 `.env.example`）指向部署的 REST 基组池根目录。渲染输入卡必须配置；未配置时 `/v1/rest-inputs` 返回 500 基础设施错误。
 
 ## 运行与测试
 
@@ -28,7 +29,7 @@ uvicorn aifs.api:app             # 启动 API（默认 127.0.0.1:8000）
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/health` | `{"status": "ok", "service": "aifs-api", "version": "0.1.0"}` |
-| POST | `/v1/rest-inputs` | 渲染 REST TOML 输入卡；领域设置不兼容返回 422 与稳定 JSON 错误 |
+| POST | `/v1/rest-inputs` | 渲染 REST TOML 输入卡；领域设置不兼容返回 422 与稳定 JSON 错误；部署未配置基组池返回 500（`configuration_error`） |
 | POST | `/v1/rest-inputs/validate` | 独立校验完整输入卡；`valid=false` 是 200 领域结果 |
 
 推荐接口 `/v1/recommendations` 由后续任务实现，当前刻意不存在。
@@ -47,7 +48,7 @@ uvicorn aifs.api:app             # 启动 API（默认 127.0.0.1:8000）
 - 自洽场方法（HF、LDA、BLYP、PBE、xPBE、XLYP、SCAN、M06-L、MN15-L、TPSS、B3LYP、X3LYP、PBE0、M05、M05-2X、M06、M06-2X、SCAN0、MN15）默认基组 `def2-TZVPP`；后自洽场方法（MP2、XYG3、XYGJOS、XYG7、xDH-PBE0、sBGE2、ZRPS、scsRPA、R-xDH7、RPA@PBE、RPA@B3LYP）默认基组 `def2-QZVPP`。
 - 经验色散仅允许 `d3`、`d3bj`、`d4`，通过独立的 `empirical_dispersion` 键输出；双杂化/RPA 类方法（XYG3、XYG7、XYGJOS、xDH-PBE0、sBGE2、ZRPS、scsRPA、R-xDH7、RPA@PBE、RPA@B3LYP）请求色散时返回结构化领域错误（code `empirical_dispersion_not_needed`），绝不静默删除。
 - `spin == 1` 自动推导 `spin_polarization=false`；`spin > 1` 自动推导 `true`；推导结果记录在 `defaults_applied`。
-- `num_threads` 缺省为 10；`basis_path` 由部署传入的 `basis_set_pool` 与最终基组拼接，后端不硬编码本机路径。
+- `num_threads` 缺省为 10；`basis_path` 由服务端配置 `AIFS_BASIS_SET_POOL` 与最终基组拼接，后端不硬编码本机路径。请求体没有 `basis_set_pool` 字段（传入即 422）；`basis` 只能是池根目录内的相对路径，绝对路径、盘符与 `.`/`..` 段被拒绝（422，code `basis_outside_pool`）。
 - `position` 使用 TOML 三双引号多行字符串输出；渲染器不接受任意 TOML 键值片段。
 - 校验器独立于渲染器：TOML 语法、`[ctrl]`/`[geom]` 存在性、必需字段、字段位置、伪造关键词（`method`/`coord`/`molecule`）、目录成员、数值范围、有限电荷、自旋一致性、色散兼容与坐标格式；未收录的 section 和 keyword 作为警告返回，不静默忽略；错误按固定顺序返回，TOML 无法解析时只返回语法错误。
 

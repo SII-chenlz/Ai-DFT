@@ -62,9 +62,11 @@ def test_system_name_max_length_accepted(make_request: Callable[..., RestInputRe
     assert len(request.system_name) == 120
 
 
-def test_blank_basis_set_pool_rejected(make_request: Callable[..., RestInputRequest]) -> None:
+def test_basis_set_pool_is_not_a_request_field(
+    make_request: Callable[..., RestInputRequest],
+) -> None:
     with pytest.raises(ValidationError):
-        make_request(basis_set_pool="   ")
+        make_request(basis_set_pool="/pool")
 
 
 def test_unknown_xc_rejected(make_request: Callable[..., RestInputRequest]) -> None:
@@ -127,9 +129,9 @@ def test_empty_basis_becomes_none(make_request: Callable[..., RestInputRequest])
 
 
 def test_strings_are_stripped(make_request: Callable[..., RestInputRequest]) -> None:
-    request = make_request(system_name="  water  ", basis_set_pool="  /pool  ")
+    request = make_request(system_name="  water  ", position="  O 0 0 0\n  H 0 0 1\n")
     assert request.system_name == "water"
-    assert request.basis_set_pool == "/pool"
+    assert request.position.startswith("O 0 0 0")
 
 
 def test_validate_input_request_rejects_empty_rest_input() -> None:

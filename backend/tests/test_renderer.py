@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import pytest
 
+from aifs.config import ConfigurationError, get_settings
 from aifs.models import DomainValidationError, RestInputRequest, RestInputResponse
 from aifs.rest import tomllib
 from aifs.rest.renderer import render_rest_input
@@ -45,12 +46,52 @@ def test_explicit_basis_wins_without_default(
     assert not any(item.startswith("basis=") for item in response.defaults_applied)
 
 
-def test_basis_path_joins_pool_and_basis(
-    make_request: Callable[..., RestInputRequest],
+def test_basis_path_joins_configured_pool_and_basis(
+    make_request: Callable[..., RestInputRequest], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    response = render_rest_input(make_request(basis_set_pool="/opt/rest/pool"))
+    monkeypatch.setenv("AIFS_BASIS_SET_POOL", "/opt/rest/pool")
+    get_settings.cache_clear()
+    response = render_rest_input(make_request())
     data = tomllib.loads(response.rest_input)
     assert data["ctrl"]["basis_path"] == "/opt/rest/pool/def2-TZVPP"
+
+
+@pytest.mark.parametrize(
+    "basis",
+    [
+        "/etc/evil",
+        "C:\\evil",
+        "..",
+        "../evil",
+        "sub/../../evil",
+        "..\\evil",
+        ".",
+        "sub/./evil",
+    ],
+)
+def test_basis_escaping_pool_is_rejected(
+    make_request: Callable[..., RestInputRequest], basis: str
+) -> None:
+    with pytest.raises(DomainValidationError) as excinfo:
+        render_rest_input(make_request(basis=basis))
+    assert excinfo.value.code == "basis_outside_pool"
+
+
+def test_basis_nested_inside_pool_is_allowed(
+    make_request: Callable[..., RestInputRequest],
+) -> None:
+    response = render_rest_input(make_request(basis="sub/def2-SVP"))
+    data = tomllib.loads(response.rest_input)
+    assert data["ctrl"]["basis_path"] == "/data/rest/basis_sets/sub/def2-SVP"
+
+
+def test_missing_pool_configuration_is_infrastructure_error(
+    make_request: Callable[..., RestInputRequest], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AIFS_BASIS_SET_POOL", raising=False)
+    get_settings.cache_clear()
+    with pytest.raises(ConfigurationError):
+        render_rest_input(make_request())
 
 
 def test_d3bj_emitted_as_separate_empirical_dispersion_key(

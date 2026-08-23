@@ -2,9 +2,11 @@
 
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from aifs.api import app
+from aifs.config import get_settings
 from aifs.rest import tomllib
 
 client = TestClient(app)
@@ -59,6 +61,28 @@ def test_create_rest_input_extra_field_422(request_payload: dict[str, Any]) -> N
     response = client.post("/v1/rest-inputs", json={**request_payload, "junk": 1})
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "request_validation_error"
+
+
+def test_create_rest_input_rejects_client_supplied_pool(
+    request_payload: dict[str, Any],
+) -> None:
+    response = client.post(
+        "/v1/rest-inputs", json={**request_payload, "basis_set_pool": "/tmp/evil"}
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "request_validation_error"
+
+
+def test_create_rest_input_without_pool_config_is_500(
+    request_payload: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AIFS_BASIS_SET_POOL", raising=False)
+    get_settings.cache_clear()
+    response = client.post("/v1/rest-inputs", json=request_payload)
+    assert response.status_code == 500
+    error = response.json()["error"]
+    assert error["code"] == "configuration_error"
+    assert "AIFS_BASIS_SET_POOL" in error["message"]
 
 
 def test_validate_endpoint_accepts_valid_card_200(valid_card: str) -> None:
