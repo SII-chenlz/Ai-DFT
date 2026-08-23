@@ -1,0 +1,5 @@
+# AIFS tool bundle. The official Web bundle supplies the surrounding
+# conversation surface; this out-of-tree layer contributes the AIFS tools.
+- insert:
+    - id: aifs
+      name: '@aifs/dsh-plugin-aifs'
