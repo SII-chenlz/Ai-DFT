@@ -49,7 +49,7 @@ uvicorn aifs.api:app             # 启动 API（默认 127.0.0.1:8000）
 - `spin == 1` 自动推导 `spin_polarization=false`；`spin > 1` 自动推导 `true`；推导结果记录在 `defaults_applied`。
 - `num_threads` 缺省为 10；`basis_path` 由部署传入的 `basis_set_pool` 与最终基组拼接，后端不硬编码本机路径。
 - `position` 使用 TOML 三双引号多行字符串输出；渲染器不接受任意 TOML 键值片段。
-- 校验器独立于渲染器：TOML 语法、`[ctrl]`/`[geom]` 存在性、必需字段、字段位置、伪造关键词（`method`/`coord`/`molecule`）、目录成员、数值范围、自旋一致性、色散兼容与坐标格式；错误按固定顺序返回，TOML 无法解析时只返回语法错误。
+- 校验器独立于渲染器：TOML 语法、`[ctrl]`/`[geom]` 存在性、必需字段、字段位置、伪造关键词（`method`/`coord`/`molecule`）、目录成员、数值范围、有限电荷、自旋一致性、色散兼容与坐标格式；未收录的 section 和 keyword 作为警告返回，不静默忽略；错误按固定顺序返回，TOML 无法解析时只返回语法错误。
 
 ## 已知限制
 

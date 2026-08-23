@@ -8,6 +8,8 @@ syntax error is reported.
 
 from __future__ import annotations
 
+import math
+import re
 from typing import Any
 
 from aifs.models import ValidateInputResponse, ValidationIssue
@@ -27,9 +29,21 @@ GEOM_REQUIRED_FIELDS: tuple[str, ...] = ("name", "position")
 
 CTRL_FIELDS: frozenset[str] = frozenset(CTRL_REQUIRED_FIELDS + ("empirical_dispersion", "outputs"))
 GEOM_FIELDS: frozenset[str] = frozenset(GEOM_REQUIRED_FIELDS + ("unit",))
+KNOWN_OPTIONAL_SECTIONS: frozenset[str] = frozenset(
+    {"hessian", "thermo", "geometric_pyo3"}
+)
 
 # Keywords from other input-card conventions that REST does not support.
 FORBIDDEN_KEYWORDS: frozenset[str] = frozenset({"method", "coord", "molecule"})
+
+
+def _toml_error_line(exc: Exception) -> int | None:
+    """Read the syntax-error line across tomli and stdlib tomllib versions."""
+    line = getattr(exc, "lineno", None)
+    if isinstance(line, int):
+        return line
+    match = re.search(r"\bat line (\d+)\b", str(exc))
+    return int(match.group(1)) if match else None
 
 
 def _issue(
@@ -93,6 +107,42 @@ def _check_forbidden_keywords(
                     _issue(
                         "forbidden_keyword",
                         f"keyword {key!r} is not a REST keyword",
+                        section=section_name,
+                        field=key,
+                    )
+                )
+
+
+def _check_unknown_sections_and_keywords(
+    data: dict[str, Any],
+    ctrl: dict[str, Any] | None,
+    geom: dict[str, Any] | None,
+    warnings: list[ValidationIssue],
+) -> None:
+    """Surface catalog gaps without rejecting forward-compatible REST fields."""
+    known_sections = {"ctrl", "geom"} | KNOWN_OPTIONAL_SECTIONS
+    for key, value in data.items():
+        if isinstance(value, dict) and key not in known_sections:
+            warnings.append(
+                _issue(
+                    "unknown_section",
+                    f"section [{key}] is not in the current REST section catalog",
+                    section=key,
+                )
+            )
+
+    for section_name, table, known_fields in (
+        ("ctrl", ctrl, CTRL_FIELDS),
+        ("geom", geom, GEOM_FIELDS),
+    ):
+        if table is None:
+            continue
+        for key in table:
+            if key not in known_fields:
+                warnings.append(
+                    _issue(
+                        "unknown_keyword",
+                        f"keyword {key!r} is not in the current REST keyword catalog",
                         section=section_name,
                         field=key,
                     )
@@ -285,10 +335,20 @@ def _check_ctrl_values(
         )
 
     value = ctrl.get("charge")
-    if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))):
-        errors.append(
-            _issue("invalid_type", "charge must be a number", section="ctrl", field="charge")
-        )
+    if value is not None:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            errors.append(
+                _issue("invalid_type", "charge must be a number", section="ctrl", field="charge")
+            )
+        elif not math.isfinite(value):
+            errors.append(
+                _issue(
+                    "non_finite",
+                    "charge must be a finite number",
+                    section="ctrl",
+                    field="charge",
+                )
+            )
 
     value = ctrl.get("spin")
     if value is not None:
@@ -407,7 +467,7 @@ def validate_rest_input(rest_input: str) -> ValidateInputResponse:
             _issue(
                 "toml_syntax",
                 f"TOML syntax error: {exc}",
-                line=getattr(exc, "lineno", None),
+                line=_toml_error_line(exc),
             )
         )
         return ValidateInputResponse(valid=False, errors=errors, warnings=[], parsed_sections=[])
@@ -415,6 +475,7 @@ def validate_rest_input(rest_input: str) -> ValidateInputResponse:
     ctrl, geom = _check_sections(data, errors)
     _check_forbidden_keywords(data, ctrl, geom, errors)
     _check_required_and_placement(ctrl, geom, errors)
+    _check_unknown_sections_and_keywords(data, ctrl, geom, warnings)
     if ctrl is not None:
         _check_ctrl_values(ctrl, errors, warnings)
     if geom is not None:

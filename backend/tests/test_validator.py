@@ -109,6 +109,14 @@ def test_toml_syntax_error_returns_only_syntax_issue() -> None:
     assert result.parsed_sections == []
 
 
+def test_toml_syntax_error_extracts_line_on_all_supported_runtimes() -> None:
+    result = validate_rest_input('[ctrl]\nxc = "PBE"\n=bad')
+    assert result.valid is False
+    assert len(result.errors) == 1
+    assert result.errors[0].code == "toml_syntax"
+    assert result.errors[0].line == 3
+
+
 def test_unknown_xc_rejected(valid_card: str) -> None:
     card = valid_card.replace('xc = "PBE"', 'xc = "PBE99"')
     result = validate_rest_input(card)
@@ -270,6 +278,13 @@ def test_integer_charge_accepted(valid_card: str) -> None:
     assert result.valid is True
 
 
+def test_nonfinite_charge_rejected(valid_card: str) -> None:
+    card = valid_card.replace("charge = 0.0", "charge = nan")
+    result = validate_rest_input(card)
+    assert result.valid is False
+    assert any(e.code == "non_finite" and e.field == "charge" for e in result.errors)
+
+
 def test_bool_is_not_a_valid_spin(valid_card: str) -> None:
     card = valid_card.replace("spin = 1", "spin = true")
     result = validate_rest_input(card)
@@ -292,6 +307,30 @@ def test_rest_outputs_accepted(valid_card: str) -> None:
     )
     result = validate_rest_input(card)
     assert result.valid is True
+
+
+def test_unknown_ctrl_keyword_is_warning(valid_card: str) -> None:
+    card = valid_card.replace(
+        'job_type = "energy"', 'job_type = "energy"\nfuture_keyword = "value"'
+    )
+    result = validate_rest_input(card)
+    assert result.valid is True
+    assert result.errors == []
+    assert any(
+        w.code == "unknown_keyword" and w.section == "ctrl" and w.field == "future_keyword"
+        for w in result.warnings
+    )
+
+
+def test_unknown_top_level_section_is_warning(valid_card: str) -> None:
+    card = valid_card + "\n[future_section]\nvalue = true\n"
+    result = validate_rest_input(card)
+    assert result.valid is True
+    assert result.errors == []
+    assert any(
+        w.code == "unknown_section" and w.section == "future_section"
+        for w in result.warnings
+    )
 
 
 def test_top_level_scalar_key_rejected(valid_card: str) -> None:
