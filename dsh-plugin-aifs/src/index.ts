@@ -24,7 +24,17 @@ import { defineGenerateRestInputTool, defineValidateRestInputTool } from './tool
 export const name = 'aifs'
 
 /** Services the plugin requires before its `apply` runs. */
-export const inject = ['tools'] as const
+export const inject = ['tools', 'systemPrompt'] as const
+
+/** Stable model-facing instructions for the first AIFS workflow. */
+export const AIFS_PROMPT_TEXT = [
+  'AIFS handles REST quantum-chemistry input cards.',
+  'Ask for missing coordinates, charge, or spin information instead of guessing.',
+  'Use generate_rest_input only with structured, confirmed values.',
+  'After generating a card, call validate_rest_input before saying it is ready.',
+  'Do not invent literature evidence, benchmark values, calculation results, or unsupported REST keywords.',
+  'This version generates and validates cards only; it does not run REST jobs.',
+].join(' ')
 
 /** Deployment-facing configuration of the AIFS plugin. */
 export interface Config extends AifsClientConfig {}
@@ -51,12 +61,18 @@ export const Config = z.object({
 export function apply(ctx: Context, config: Config): void {
   assertClientConfig(config)
   ctx.effect(() => {
+    const disposePrompt = ctx.systemPrompt.section({
+      name: 'aifs:guidance',
+      order: 80,
+      text: AIFS_PROMPT_TEXT,
+    })
     const client = new AifsBackendClient(config)
     const disposeGenerate = ctx.tools.register(defineGenerateRestInputTool(client))
     const disposeValidate = ctx.tools.register(defineValidateRestInputTool(client))
     return () => {
       disposeValidate()
       disposeGenerate()
+      disposePrompt()
     }
   })
 }

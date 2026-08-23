@@ -8,7 +8,7 @@ import { createTestContext, mountPlugin } from './fixtures/context.ts'
 describe('aifs plugin', () => {
   it('exports the Cordis function-plugin contract with no default export', () => {
     expect(name).toBe('aifs')
-    expect(inject).toEqual(['tools'])
+    expect(inject).toEqual(['tools', 'systemPrompt'])
     expect(typeof apply).toBe('function')
     expect(typeof Config.parse).toBe('function')
   })

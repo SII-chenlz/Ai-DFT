@@ -1,0 +1,8 @@
+# Optional user-owned overlay for the web profile. The bundle already inserts
+# this row; this file only restates its complete config when an override is
+# desired.
+- id: aifs
+  config:
+    baseUrl: !!js process.env.AIFS_BACKEND_URL ?? 'http://127.0.0.1:8000'
+    requestTimeoutMs: 30000
+    maxResponseBytes: 1048576

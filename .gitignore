@@ -10,6 +10,10 @@ dist/
 build/
 *.egg-info/
 .env
+.env.local
+.dsh-home/
+.local/
+*.log
 output/
 node_modules/
 coverage/

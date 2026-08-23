@@ -9,9 +9,21 @@
 declare module '@deepseek-ai/cordis' {
   import type { ToolRuntime } from '@deepseek-ai/dsh-tools'
 
+  export interface SystemPromptSection {
+    name: string
+    order: number
+    text: string
+  }
+
+  export interface SystemPrompt {
+    section(section: SystemPromptSection): () => void
+  }
+
   export interface Context {
     /** Tool registry service injected via the plugin's `inject: ['tools']`. */
     tools: ToolRuntime
+    /** Prompt registry used to add model-facing domain guidance. */
+    systemPrompt: SystemPrompt
     /** Register a lifecycle effect; the callback's return value runs on dispose. */
     effect(fn: () => () => void | Promise<void>): void
   }

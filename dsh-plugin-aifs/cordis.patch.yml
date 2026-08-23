@@ -3,3 +3,7 @@
 - insert:
     - id: aifs
       name: '@aifs/dsh-plugin-aifs'
+      config:
+        baseUrl: !!js process.env.AIFS_BACKEND_URL ?? 'http://127.0.0.1:8000'
+        requestTimeoutMs: 30000
+        maxResponseBytes: 1048576

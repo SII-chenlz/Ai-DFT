@@ -15,12 +15,17 @@ export interface TestContext {
     names(): string[]
     get(name: string): ToolDefinition | undefined
   }
+  readonly systemPrompt: {
+    section(section: { name: string; order: number; text: string }): () => void
+    sections(): Array<{ name: string; order: number; text: string }>
+  }
   effect(fn: () => () => void | Promise<void>): void
   dispose(): Promise<void>
 }
 
 export function createTestContext(): TestContext {
   const registry = new Map<string, ToolDefinition>()
+  const promptSections: Array<{ name: string; order: number; text: string }> = []
   let cleanup: (() => void | Promise<void>) | undefined
   return {
     tools: {
@@ -32,6 +37,16 @@ export function createTestContext(): TestContext {
       },
       names: () => [...registry.keys()],
       get: (name) => registry.get(name),
+    },
+    systemPrompt: {
+      section(section) {
+        promptSections.push(section)
+        return () => {
+          const index = promptSections.indexOf(section)
+          if (index >= 0) promptSections.splice(index, 1)
+        }
+      },
+      sections: () => [...promptSections],
     },
     effect(fn) {
       cleanup = fn()

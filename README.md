@@ -53,6 +53,17 @@ harness/                              # 普通容器目录，不是 Git 仓库
 3. 审查通过后实现 AIFS Harness 插件和 Agent Prompt。
 4. 端到端流程稳定后再接入知识图谱和计算执行器。
 
+## 直接本地测试
+
+复制 `.env.example` 为 `.env.local`，填写 `DEEPSEEK_API_KEY`，并按需要填写 `AIFS_BASIS_SET_POOL`。然后：
+
+```bash
+./scripts/check-local.sh       # 后端已启动时检查生成/校验链路
+./scripts/start-local.sh       # 安装本地插件并启动 Harness Web
+```
+
+默认端口是 Harness `127.0.0.1:3080`、AIFS FastAPI `127.0.0.1:8000`。密钥只从环境变量读取，不能提交到 Git。
+
 ## 旧原型
 
 `prototype-v0/` 是前期 VASP/QE 原型，仅作为 Pydantic、DeepSeek 客户端和测试风格参考。新代码不得继续扩展该目录。
