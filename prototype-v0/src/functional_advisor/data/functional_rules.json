@@ -1,0 +1,111 @@
+{
+  "version": "0.1.0",
+  "defaults": {
+    "vasp": {
+      "ENCUT": 520,
+      "EDIFF": 1e-06,
+      "EDIFFG": -0.02,
+      "IBRION": 2,
+      "ISIF": 3,
+      "NSW": 200,
+      "ISMEAR": 0,
+      "SIGMA": 0.05,
+      "LREAL": "Auto",
+      "LORBIT": 11,
+      "PREC": "Accurate"
+    },
+    "qe": {
+      "ecutwfc": 60,
+      "ecutrho": 480,
+      "conv_thr": 1e-08,
+      "mixing_beta": 0.3,
+      "electron_maxstep": 200
+    }
+  },
+  "rules": [
+    {
+      "id": "organic_molecular",
+      "keywords": ["molecule", "molecular", "organic", "polymer", "mof", "cof", "supramolecular", "crystal", "分子", "有机", "聚合物", "晶体"],
+      "recommendation": {
+        "functional": "PBE",
+        "dispersion": "D3(BJ)",
+        "rationale": "Noncovalent interactions dominate molecular/organic crystals; PBE-D3(BJ) is a robust cost/accuracy default. Consider B97-3c or r2SCAN-D4 for better thermochemistry when affordable.",
+        "caveats": ["For gas-phase reaction barriers, hybrid functionals such as M06-2X or wB97X-D are preferred."],
+        "references": ["Grimme et al., J. Chem. Phys. 132, 154104 (2010)"],
+        "parameters": {"IVDW": 11}
+      }
+    },
+    {
+      "id": "metals_surfaces",
+      "keywords": ["metal", "alloy", "surface", "slab", "adsorption", "catalysis", "electrocatalysis", "facet", "金属", "合金", "表面", "吸附", "催化", "电催化", "晶面"],
+      "recommendation": {
+        "functional": "optB88-vdW",
+        "dispersion": "vdW-DF",
+        "rationale": "Metal surfaces and adsorption energies need a van der Waals density functional; optB88-vdW is a good balance for lattice constants and adsorption. RPBE-D3 or PBE-D3(BJ) are common alternatives.",
+        "caveats": ["Check lattice constant against experiment; optB88-vdW can underbind some transition metals.", "Use PAW datasets with high ENMAX; set ENCUT >= 1.3 * max ENMAX."],
+        "references": ["Klimes et al., J. Phys.: Condens. Matter 22, 022201 (2010)"],
+        "parameters": {"IVDW": 202, "GGA": "RE"}
+      }
+    },
+    {
+      "id": "semiconductors_insulators",
+      "keywords": ["semiconductor", "insulator", "band gap", "bandgap", "perovskite", "silicon", "oxide semiconductor", "半导体", "绝缘体", "带隙", "钙钛矿", "硅"],
+      "recommendation": {
+        "functional": "HSE06",
+        "dispersion": "",
+        "rationale": "For accurate band gaps and defect levels use HSE06; for fast geometry optimization use PBE/PBEsol first and refine with HSE06.",
+        "caveats": ["HSE06 is much more expensive; use reduced k-meshes and restart from PBE wavefunctions when possible.", "For lattice constants PBEsol is usually better than PBE."],
+        "references": ["Heyd, Scuseria, Ernzerhof, J. Chem. Phys. 118, 8207 (2003)"],
+        "parameters": {"LHFCALC": true, "HFSCREEN": 0.2, "AEXX": 0.25}
+      }
+    },
+    {
+      "id": "strongly_correlated",
+      "keywords": ["transition metal oxide", "tmo", "mott", "strongly correlated", "ni", "co", "fe", "mn", "cu oxide", "lithium battery cathode", "过渡金属氧化物", "强关联", "电池正极", "氧化镍", "氧化钴", "氧化铁", "氧化锰", "氧化铜"],
+      "recommendation": {
+        "functional": "PBE+U",
+        "dispersion": "",
+        "rationale": "d/f-electron localization requires PBE+U or HSE06. PBE+U is a practical default for transition-metal oxides and battery cathodes; SCAN/r2SCAN is a modern parameter-free alternative.",
+        "caveats": ["Hubbard U is element and oxidation-state dependent; calibrate against experiments or benchmark literature.", "Combine with D3(BJ) for layered/host-guest systems."],
+        "references": ["Dudarev et al., Phys. Rev. B 57, 1505 (1998)"],
+        "parameters": {"LDAU": true, "LDAUTYPE": 2, "LDAUPRINT": 1}
+      }
+    },
+    {
+      "id": "spectroscopy",
+      "keywords": ["optical", "absorption", "spectra", "raman", "excited state", "tddft", "光学", "吸收", "光谱", "拉曼", "激发态"],
+      "recommendation": {
+        "functional": "HSE06",
+        "dispersion": "",
+        "rationale": "Optical/electronic spectra usually require a screened hybrid (HSE06) or many-body GW/BSE. TDDFT with a range-separated hybrid is preferred for molecular excited states.",
+        "caveats": ["HSE06 underestimates excitonic effects; GW/BSE is the next step.", "Molecular TDDFT: CAM-B3LYP or wB97X-D often outperform global hybrids."],
+        "references": [],
+        "parameters": {"LHFCALC": true, "HFSCREEN": 0.2}
+      }
+    },
+    {
+      "id": "lattice_mechanics",
+      "keywords": ["lattice constant", "elastic", "phonon", "thermal expansion", "equation of state", "晶格常数", "弹性", "声子", "热膨胀", "状态方程"],
+      "recommendation": {
+        "functional": "PBEsol",
+        "dispersion": "",
+        "rationale": "PBEsol improves lattice constants and elastic properties over PBE at similar cost.",
+        "caveats": ["PBEsol can worsen atomization energies; use PBE for chemistry and PBEsol for solid-state geometry."],
+        "references": ["Perdew et al., Phys. Rev. Lett. 100, 136406 (2008)"],
+        "parameters": {"GGA": "PS"}
+      }
+    },
+    {
+      "id": "reactions_barriers",
+      "keywords": ["reaction", "barrier", "transition state", "ts", "kinetics", "catalytic mechanism", "反应", "势垒", "过渡态", "动力学", "催化机理"],
+      "recommendation": {
+        "functional": "PBE",
+        "dispersion": "D3(BJ)",
+        "rationale": "Use PBE-D3(BJ) for metal-catalyzed reaction paths; for small-molecule organic reactions prefer M06-2X or wB97X-D. NEB/CI-NEB input cards inherit these settings.",
+        "caveats": ["Barrier heights are sensitive to the functional; validate against CCSD(T) benchmarks when possible."],
+        "references": [],
+        "parameters": {"IVDW": 11}
+      }
+    }
+  ]
+}
