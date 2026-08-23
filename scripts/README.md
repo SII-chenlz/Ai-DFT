@@ -26,6 +26,7 @@ cp .env.example .env.local
 启动完整 Harness Web + AIFS：
 
 ```bash
+# 首次使用先在 ../deepseek-harness 完成：pnpm install && pnpm run build
 ./scripts/start-local.sh
 ```
 
