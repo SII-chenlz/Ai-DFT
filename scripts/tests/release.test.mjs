@@ -35,6 +35,17 @@ test('release check refuses stale versions without changing files', () => fixtur
   assert.equal(await readFile(path, 'utf8'), before)
 }))
 
+test('Windows checkout line endings pass without masking a stale runtime version', () => fixture(async root => {
+  await synchronizeRelease(root)
+  const path = join(root, 'dsh-plugin-aifs/src/version.ts')
+  const crlf = (await readFile(path, 'utf8')).replace(/\n/g, '\r\n')
+  await writeFile(path, crlf)
+  assert.equal(await checkRelease(root), '1.2.3')
+  assert.equal(await readFile(path, 'utf8'), crlf)
+  await writeFile(path, crlf.replace("'1.2.3'", "'1.2.2'"))
+  await assert.rejects(checkRelease(root), /Runtime version mismatch/)
+}))
+
 test('release check refuses a lock that resolves a different build dependency', () => fixture(async root => {
   await synchronizeRelease(root)
   const path = join(root, 'dsh-plugin-aifs/package-lock.json')

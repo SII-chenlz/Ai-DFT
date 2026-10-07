@@ -35,7 +35,8 @@ export async function checkRelease(root = defaultRoot, { installed = false } = {
   if ([manifest.version, lock.version, lock.packages['']?.version].some(value => value !== version)) {
     throw new Error('AIFS version mismatch: run node scripts/release.mjs --sync')
   }
-  if (await readFile(join(directory, 'src/version.ts'), 'utf8') !== versionSource(version)) {
+  const runtimeVersion = (await readFile(join(directory, 'src/version.ts'), 'utf8')).replace(/\r\n/g, '\n')
+  if (runtimeVersion !== versionSource(version)) {
     throw new Error('Runtime version mismatch: run node scripts/release.mjs --sync')
   }
   const require = createRequire(join(directory, 'package.json'))
