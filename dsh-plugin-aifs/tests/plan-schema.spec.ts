@@ -4,7 +4,7 @@ import { compileValue, validateValue } from './fixtures/dsh-tools.ts'
 import { PLAN_DRAFT_SCHEMA } from '../src/plan-schema.ts'
 
 const raw = readFileSync(new URL('../../skills/aifs-molecular-planning/SKILL.md', import.meta.url), 'utf8')
-const example = () => JSON.parse(/```json\n([\s\S]*?)\n```/.exec(raw)![1]!)
+const example = () => JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(raw)![1]!)
 const schema = compileValue(PLAN_DRAFT_SCHEMA)
 
 describe('model-facing plan contract', () => {

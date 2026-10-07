@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BackendRuntime, packagedExecutable, SERVICE_VERSION } from '../src/desktop/runtime.ts'
 import type { ProcessHandle, SubprocessService } from '../src/desktop/runtime.ts'
@@ -148,7 +149,7 @@ it('registers a discoverable bundled planning skill, including its body and reso
       expect(skill.invocation.modelInvocable).toBe(true)
     })
     return dispose
-  } }, new URL('../../skills/aifs-molecular-planning/SKILL.md', import.meta.url).pathname)
+  } }, fileURLToPath(new URL('../../skills/aifs-molecular-planning/SKILL.md', import.meta.url)))
   unregister()
   expect(dispose).toHaveBeenCalledOnce()
 })

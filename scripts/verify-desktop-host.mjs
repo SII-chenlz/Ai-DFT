@@ -147,7 +147,7 @@ try {
   assert(skills.some(skill => skill.name === 'aifs-molecular-planning'))
   const skill = await ctx.skills.get('aifs-molecular-planning')
   assert(skill.content.includes('create_aifs_plan'))
-  const example = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(skill.content)[1])
+  const example = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(skill.content)[1])
   const optimizedPlan = await ctx.tools.get('create_aifs_plan').execute({ plan: example }, execution)
   assert.equal(optimizedPlan.ok, true, JSON.stringify(optimizedPlan))
   assert.deepEqual(optimizedPlan.statuses.map(task => task.state), ['ready_for_card', 'needs_input'])
