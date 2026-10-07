@@ -10,7 +10,7 @@ AIFS 是 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-har
 2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
 3. 在 DSH「设置 → 模型」配置接口与 API Key，选择支持工具调用的模型。
 
-当前可用包：`dist/aifs-dsh-0.1.12-macos-arm64-local.tgz`。Windows x64 已有 [原生构建入口](scripts/README.md#打包)，安装包与 Windows DSH 流程尚未验收；Intel Mac 暂无安装包。
+当前调试包：`dist/aifs-dsh-0.1.12-macos-arm64-local.tgz`、`dist/aifs-dsh-0.1.12-windows-x64-local.tgz`。Windows 后端已通过原生构建与持久化检查，Windows DSH 安装及真实对话待验收；Intel Mac 暂无安装包。
 
 用户无需安装 Python 或 Node。升级时卸载旧插件、安装新版，完全退出并重开 DSH（Mac 用 `⌘Q`）。
 

@@ -1,4 +1,4 @@
-# Python 3.11 desktop build pins. macOS arm64 verified; Windows x64 pending.
+# Python 3.11 desktop build pins. Native macOS arm64 and Windows x64 verified.
 altgraph==0.17.5
 annotated-doc==0.0.5
 annotated-types==0.8.0

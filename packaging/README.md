@@ -1,6 +1,6 @@
 # AIFS 桌面插件安装
 
-插件包含编译后的工具、Skill 和本机后端。macOS arm64 已有调试包；Windows x64 构建入口已提供，原生包与客户端安装流程待验收。
+插件包含编译后的工具、Skill 和本机后端。提供 macOS arm64 和 Windows x64 调试包；Windows 后端已通过原生运行检查，DSH 客户端安装及真实对话待验收。
 
 ## 安装与使用
 
@@ -26,7 +26,7 @@ macOS：
   --source "/原数据库目录" --destination "$HOME/.dsh/aifs"
 ```
 
-Windows PowerShell（取得原生 Windows 包后）：
+Windows PowerShell：
 
 ```powershell
 & 'C:\解压目录\package\runtimes\win32-x64\aifs-backend\aifs-backend.exe' migrate --source 'C:\原数据库目录' --destination "$env:USERPROFILE\.dsh\aifs"
