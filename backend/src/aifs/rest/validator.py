@@ -14,6 +14,7 @@ from typing import Any
 
 from aifs.models import ValidateInputResponse, ValidationIssue
 from aifs.rest import catalogs, tomllib
+from aifs.rest.capabilities import SECTIONS, normalize_xc, semantic_errors
 
 CTRL_REQUIRED_FIELDS: tuple[str, ...] = (
     "xc",
@@ -27,10 +28,16 @@ CTRL_REQUIRED_FIELDS: tuple[str, ...] = (
 )
 GEOM_REQUIRED_FIELDS: tuple[str, ...] = ("name", "position")
 
-CTRL_FIELDS: frozenset[str] = frozenset(CTRL_REQUIRED_FIELDS + ("empirical_dispersion", "outputs"))
-GEOM_FIELDS: frozenset[str] = frozenset(GEOM_REQUIRED_FIELDS + ("unit",))
+CTRL_FIELDS: frozenset[str] = (
+    frozenset(
+        CTRL_REQUIRED_FIELDS
+        + ("empirical_dispersion", "outputs", "xc_parser", "ri_jk", "ri_pt2", "hessian", "thermo")
+    )
+    | SECTIONS["ctrl"].keys()
+)
+GEOM_FIELDS: frozenset[str] = frozenset(GEOM_REQUIRED_FIELDS + ("unit",)) | SECTIONS["geom"].keys()
 KNOWN_OPTIONAL_SECTIONS: frozenset[str] = frozenset(
-    {"hessian", "thermo", "geometric_pyo3"}
+    section for section in SECTIONS if section not in {"ctrl", "geom"} and "." not in section
 )
 
 # Keywords from other input-card conventions that REST does not support.
@@ -66,9 +73,7 @@ def _check_sections(
 
     for key, value in data.items():
         if not isinstance(value, dict):
-            errors.append(
-                _issue("invalid_section", f"top-level key {key!r} must be a TOML table")
-            )
+            errors.append(_issue("invalid_section", f"top-level key {key!r} must be a TOML table"))
 
     if "ctrl" not in data:
         errors.append(_issue("missing_section", "required section [ctrl] is missing"))
@@ -119,7 +124,7 @@ def _check_unknown_sections_and_keywords(
     geom: dict[str, Any] | None,
     warnings: list[ValidationIssue],
 ) -> None:
-    """Surface catalog gaps without rejecting forward-compatible REST fields."""
+    """Surface catalog gaps; the extension check also rejects uncovered fields."""
     known_sections = {"ctrl", "geom"} | KNOWN_OPTIONAL_SECTIONS
     for key, value in data.items():
         if isinstance(value, dict) and key not in known_sections:
@@ -223,8 +228,14 @@ def _check_position(
     for index, raw_line in enumerate(stripped.splitlines(), start=1):
         if not raw_line.strip():
             continue
-        tokens = raw_line.split()
-        if len(tokens) != 4 or not tokens[0].isalpha():
+        tokens = raw_line.split("#", 1)[0].split()
+        if not tokens:
+            continue
+        if (
+            len(tokens) not in {4, 5}
+            or not tokens[0].isalpha()
+            or (len(tokens) == 5 and tokens[1] not in {"0", "1"})
+        ):
             errors.append(
                 _issue(
                     "invalid_position_line",
@@ -236,9 +247,8 @@ def _check_position(
             )
             continue
         try:
-            float(tokens[1])
-            float(tokens[2])
-            float(tokens[3])
+            if not all(math.isfinite(float(token)) for token in tokens[-3:]):
+                raise ValueError("non-finite coordinates")
         except ValueError:
             errors.append(
                 _issue(
@@ -271,12 +281,12 @@ def _check_ctrl_values(
 
     value = ctrl.get("xc")
     if isinstance(value, str) and value.strip():
-        canonical_xc = catalogs.normalize_method_name(value)
+        canonical_xc = normalize_xc(value, str(ctrl.get("xc_parser", "legacy")))
         if canonical_xc is None:
             errors.append(
                 _issue(
                     "unknown_method",
-                    f"method {value!r} is not in the REST method catalog",
+                    f"method {value!r} is not in the current AIFS REST card catalog",
                     section="ctrl",
                     field="xc",
                 )
@@ -301,26 +311,36 @@ def _check_ctrl_values(
     if value is not None:
         if isinstance(value, bool) or not isinstance(value, int):
             errors.append(
-                _issue("invalid_type", "print_level must be an integer", section="ctrl",
-                       field="print_level")
+                _issue(
+                    "invalid_type",
+                    "print_level must be an integer",
+                    section="ctrl",
+                    field="print_level",
+                )
             )
         elif value < 0:
             errors.append(
-                _issue("out_of_range", "print_level must be >= 0", section="ctrl",
-                       field="print_level")
+                _issue(
+                    "out_of_range", "print_level must be >= 0", section="ctrl", field="print_level"
+                )
             )
 
     value = ctrl.get("num_threads")
     if value is not None:
         if isinstance(value, bool) or not isinstance(value, int):
             errors.append(
-                _issue("invalid_type", "num_threads must be an integer", section="ctrl",
-                       field="num_threads")
+                _issue(
+                    "invalid_type",
+                    "num_threads must be an integer",
+                    section="ctrl",
+                    field="num_threads",
+                )
             )
         elif value < 1:
             errors.append(
-                _issue("out_of_range", "num_threads must be >= 1", section="ctrl",
-                       field="num_threads")
+                _issue(
+                    "out_of_range", "num_threads must be >= 1", section="ctrl", field="num_threads"
+                )
             )
 
     value = ctrl.get("job_type")
@@ -357,9 +377,7 @@ def _check_ctrl_values(
                 _issue("invalid_type", "spin must be an integer", section="ctrl", field="spin")
             )
         elif value < 1:
-            errors.append(
-                _issue("out_of_range", "spin must be >= 1", section="ctrl", field="spin")
-            )
+            errors.append(_issue("out_of_range", "spin must be >= 1", section="ctrl", field="spin"))
 
     value = ctrl.get("spin_polarization")
     spin = ctrl.get("spin")
@@ -441,7 +459,27 @@ def _check_ctrl_values(
                     )
 
 
-def _check_geom_values(geom: dict[str, Any], errors: list[ValidationIssue]) -> None:
+def _check_geom_values(
+    geom: dict[str, Any], errors: list[ValidationIssue], warnings: list[ValidationIssue]
+) -> None:
+    if "unit" not in geom:
+        warnings.append(
+            _issue(
+                "unit_not_recorded",
+                "Coordinate unit is not explicit; confirm the REST version's default before use.",
+                section="geom",
+                field="unit",
+            )
+        )
+    elif not isinstance(geom["unit"], str) or geom["unit"].lower() not in catalogs.GEOMETRY_UNITS:
+        errors.append(
+            _issue(
+                "unsupported_unit",
+                "geom.unit must be angstrom or bohr",
+                section="geom",
+                field="unit",
+            )
+        )
     value = geom.get("name")
     if value is not None and not (isinstance(value, str) and value.strip()):
         errors.append(
@@ -479,7 +517,13 @@ def validate_rest_input(rest_input: str) -> ValidateInputResponse:
     if ctrl is not None:
         _check_ctrl_values(ctrl, errors, warnings)
     if geom is not None:
-        _check_geom_values(geom, errors)
+        _check_geom_values(geom, errors, warnings)
+    if not errors and ctrl is not None and geom is not None:
+        options = _extension_options(data)
+        errors.extend(
+            _issue("invalid_rest_options", message)
+            for message in semantic_errors(ctrl, geom, options)
+        )
 
     parsed_sections = [key for key, value in data.items() if isinstance(value, dict)]
     return ValidateInputResponse(
@@ -488,3 +532,23 @@ def validate_rest_input(rest_input: str) -> ValidateInputResponse:
         warnings=warnings,
         parsed_sections=parsed_sections,
     )
+
+
+def _extension_options(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    options = {key: value for key, value in data.items() if key not in {"ctrl", "geom"}}
+    for name in ("ctrl", "geom"):
+        table = data.get(name, {})
+        base_fields = set(CTRL_REQUIRED_FIELDS + ("empirical_dispersion", "outputs", "xc_parser"))
+        if name == "geom":
+            base_fields = set(GEOM_REQUIRED_FIELDS + ("unit",))
+        extras = {}
+        for key, value in table.items():
+            if key in base_fields:
+                continue
+            if f"{name}.{key}" in SECTIONS and isinstance(value, dict):
+                options[f"{name}.{key}"] = value
+            else:
+                extras[key] = value
+        if extras:
+            options[name] = extras
+    return options

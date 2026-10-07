@@ -19,15 +19,16 @@ export interface TestContext {
     section(section: { name: string; order: number; text: string }): () => void
     sections(): Array<{ name: string; order: number; text: string }>
   }
+  inject(services: string[], callback: (child: Context) => void): void
   effect(fn: () => () => void | Promise<void>): void
   dispose(): Promise<void>
 }
 
-export function createTestContext(): TestContext {
+export function createTestContext(services: Record<string, unknown> = {}): TestContext {
   const registry = new Map<string, ToolDefinition>()
   const promptSections: Array<{ name: string; order: number; text: string }> = []
-  let cleanup: (() => void | Promise<void>) | undefined
-  return {
+  const cleanups: Array<() => void | Promise<void>> = []
+  const ctx: TestContext = {
     tools: {
       register(definition) {
         registry.set(definition.name, definition)
@@ -48,13 +49,18 @@ export function createTestContext(): TestContext {
       },
       sections: () => [...promptSections],
     },
+    inject(required, callback) {
+      if (required.every(name => name in services)) callback(ctx as unknown as Context)
+    },
     effect(fn) {
-      cleanup = fn()
+      cleanups.push(fn())
     },
     async dispose() {
-      await cleanup?.()
+      for (const cleanup of cleanups.reverse()) await cleanup()
     },
   }
+  Object.assign(ctx, services)
+  return ctx
 }
 
 /** Mount the plugin on a fresh fake context with default config. */

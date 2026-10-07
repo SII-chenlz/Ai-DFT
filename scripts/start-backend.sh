@@ -16,6 +16,7 @@ fi
 : "${AIFS_BASIS_SET_POOL:=$ROOT_DIR/.local/basis_set_pool}"
 export AIFS_BASIS_SET_POOL
 mkdir -p "$AIFS_BASIS_SET_POOL"
+cd "$ROOT_DIR"
 
 exec python -m uvicorn aifs.api:app \
   --app-dir "$ROOT_DIR/backend/src" \

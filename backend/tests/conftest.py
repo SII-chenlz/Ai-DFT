@@ -15,6 +15,7 @@ TEST_BASIS_SET_POOL = "/data/rest/basis_sets"
 VALID_REQUEST_KWARGS: dict[str, Any] = {
     "system_name": "water",
     "position": "O 0.0 0.0 0.0\nH 0.757 0.586 0.0\nH -0.757 0.586 0.0",
+    "position_unit": "angstrom",
     "job_type": "energy",
     "xc": "B3LYP",
 }
@@ -35,6 +36,7 @@ spin_polarization = false
 
 [geom]
 name = "water"
+unit = "angstrom"
 position = \"\"\"
 O 0.0 0.0 0.0
 H 0.0 0.0 1.0

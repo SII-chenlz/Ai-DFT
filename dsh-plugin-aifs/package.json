@@ -1,9 +1,9 @@
 {
   "name": "@aifs/dsh-plugin-aifs",
-  "version": "0.1.0",
+  "version": "0.1.12",
   "private": true,
   "type": "module",
-  "description": "Cordis function plugin registering AIFS REST input tools (generate_rest_input, validate_rest_input) over HTTP.",
+  "description": "Cordis plugin exposing AIFS plans, evidence and REST input cards to DeepSeek Harness over HTTP.",
   "main": "src/index.ts",
   "engines": {
     "node": ">=20"
@@ -11,20 +11,40 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web"
     }
   },
   "scripts": {
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "test": "node ../scripts/release.mjs && node --test ../scripts/tests/*.test.mjs && vitest run",
+    "typecheck": "tsc --noEmit",
+    "build:desktop": "node ../scripts/build-desktop-plugin.mjs"
   },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "*",
-    "@deepseek-ai/dsh-tools": "*",
-    "@deepseek-ai/schemastery": "*"
+  "aifs": {
+    "compatibility": {
+      "desktopServicesTested": [
+        "0.2.0-rc.2"
+      ],
+      "sourceServicesTested": [
+        "0.2.1-alpha.1"
+      ],
+      "desktopConversationAcceptance": "pending"
+    }
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.6.0",
-    "vitest": "^3.0.0"
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-tools": "0.0.1-rc.1",
+    "@deepseek-ai/dsh-llm": "0.0.1-rc.5",
+    "@deepseek-ai/dsh-session": "0.0.1-rc.5",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "esbuild": "0.28.2"
   }
 }

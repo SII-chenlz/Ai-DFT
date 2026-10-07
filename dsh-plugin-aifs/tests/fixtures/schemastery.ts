@@ -1,12 +1,6 @@
-/**
- * Minimal schemastery-compatible runtime used for the plugin `Config`.
- *
- * Stand-in for `@deepseek-ai/schemastery`, which is not installable outside
- * the deepseek-harness workspace; tests alias the package name to this file
- * (see `vitest.config.ts`). It implements only the subset the plugin uses:
- * `z.object` over `z.string()` / `z.number()` with `.default()`. When the
- * plugin is mounted into the harness the real package resolves instead and
- * this file can be deleted.
+/** Test-only schemastery subset for Config parsing in isolated unit tests.
+ * Production bundles the real package; compatibility is checked by
+ * scripts/verify-desktop-import.mjs and verify-desktop-host.mjs.
  */
 
 export interface ZSchema<T> {

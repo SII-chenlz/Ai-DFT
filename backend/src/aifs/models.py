@@ -9,9 +9,10 @@ from __future__ import annotations
 import math
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
-from aifs.rest.catalogs import ALLOWED_OUTPUTS, normalize_method_name
+from aifs.rest.capabilities import normalize_xc, option_errors
+from aifs.rest.catalogs import ALLOWED_OUTPUTS
 
 MAX_SYSTEM_NAME_LENGTH = 120
 MAX_POSITION_LENGTH = 200_000
@@ -44,8 +45,11 @@ class RestInputRequest(BaseModel):
 
     system_name: str
     position: str
+    position_unit: Literal["angstrom", "bohr"] = "angstrom"
     job_type: Literal["energy", "opt", "force", "numerical dipole"]
     xc: str
+    xc_parser: Literal["legacy", "parse_xc"] = "legacy"
+    rest_options: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
     basis: str | None = None
     charge: float = 0.0
     spin: int = Field(default=1, ge=1)
@@ -61,9 +65,7 @@ class RestInputRequest(BaseModel):
         if not value:
             raise ValueError("system_name must not be empty")
         if len(value) > MAX_SYSTEM_NAME_LENGTH:
-            raise ValueError(
-                f"system_name must be at most {MAX_SYSTEM_NAME_LENGTH} characters"
-            )
+            raise ValueError(f"system_name must be at most {MAX_SYSTEM_NAME_LENGTH} characters")
         return value
 
     @field_validator("position")
@@ -82,13 +84,19 @@ class RestInputRequest(BaseModel):
             raise ValueError("charge must be a finite number")
         return value
 
-    @field_validator("xc")
-    @classmethod
-    def _normalize_xc(cls, value: str) -> str:
-        normalized = normalize_method_name(value)
+    @model_validator(mode="after")
+    def _check_method_and_extensions(self) -> RestInputRequest:
+        normalized = normalize_xc(self.xc, self.xc_parser)
         if normalized is None:
-            raise ValueError(f"unsupported REST method: {value!r}")
-        return normalized
+            raise ValueError(
+                f"method {self.xc!r} is not in the current AIFS REST card catalog "
+                f"for xc_parser={self.xc_parser}"
+            )
+        self.xc = normalized
+        errors = option_errors(self.rest_options)
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
 
     @field_validator("basis")
     @classmethod

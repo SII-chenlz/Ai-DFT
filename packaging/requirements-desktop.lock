@@ -1,0 +1,25 @@
+# Python 3.11 desktop build pins. macOS arm64 verified; Windows x64 pending.
+altgraph==0.17.5
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+click==8.5.0
+fastapi==0.141.1
+h11==0.16.0
+idna==3.20
+macholib==1.16.4; sys_platform == "darwin"
+packaging==26.3
+pefile==2023.2.7; sys_platform == "win32"
+pydantic==2.13.5
+pydantic-settings==2.15.0
+pydantic_core==2.46.5
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.8
+pywin32-ctypes==0.2.3; sys_platform == "win32"
+python-dotenv==1.2.3
+setuptools==83.0.0
+starlette==1.7.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.54.0
+wheel==0.47.0

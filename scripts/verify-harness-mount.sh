@@ -2,7 +2,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UPSTREAM_DIR="${DEEPSEEK_HARNESS_DIR:-$ROOT_DIR/../deepseek-harness}"
 ENV_FILE="${AIFS_ENV_FILE:-$ROOT_DIR/.env.local}"
 REQUIRE_INSTALLED=0
 if [[ "${1:-}" == "--require-installed" ]]; then
@@ -47,22 +46,19 @@ if [[ ! -f "$PROFILE_PACKAGE" ]]; then
   exit 0
 fi
 
-python - "$PROFILE_PACKAGE" <<'PY'
+python - "$PROFILE_PACKAGE" "$PLUGIN_DIR" "$DSH_HOME/skills/aifs-molecular-planning" "$ROOT_DIR/skills/aifs-molecular-planning" <<'PY'
 import json
+from pathlib import Path
 import sys
 
-manifest = json.load(open(sys.argv[1]))
+manifest = json.loads(Path(sys.argv[1]).read_text())
 dependencies = manifest.get("dependencies", {})
-assert "@aifs/dsh-plugin-aifs" in dependencies, dependencies
+assert dependencies.get("@aifs/dsh-plugin-aifs") == f"link:{sys.argv[2]}"
+assert "@aifs/dsh-plugin-aifs" in manifest["dsh"]["profile"]["bundles"]
+installed = Path(sys.argv[1]).parent / "node_modules/@aifs/dsh-plugin-aifs"
+assert installed.is_symlink() and installed.resolve() == Path(sys.argv[2]).resolve()
+skill_link = Path(sys.argv[3])
+assert skill_link.is_symlink() and skill_link.resolve() == Path(sys.argv[4]).resolve()
 PY
 
-if (( REQUIRE_INSTALLED )); then
-  PROFILE_MANIFEST="$PROFILE_DIR/dsh.profile"
-  if [[ ! -f "$PROFILE_MANIFEST" ]]; then
-    echo "profile manifest 不存在：$PROFILE_MANIFEST" >&2
-    exit 1
-  fi
-  grep -q "@aifs/dsh-plugin-aifs" "$PROFILE_MANIFEST"
-fi
-
-echo "AIFS Harness bundle 已安装到：$PROFILE_DIR"
+echo "AIFS 插件和规划 Skill 已安装到：$DSH_HOME"

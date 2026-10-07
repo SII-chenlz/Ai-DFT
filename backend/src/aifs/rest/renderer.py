@@ -10,11 +10,13 @@ reliable.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 from aifs.config import require_basis_set_pool
 from aifs.models import DomainValidationError, RestInputRequest, RestInputResponse
+from aifs.rest.capabilities import CHECKED_DATE, UPSTREAM_COMMIT
 from aifs.rest.catalogs import NO_DISPERSION_METHODS, default_basis, method_category
 
 #: Windows drive-letter prefixes; rejected because joining them to a POSIX
@@ -74,6 +76,13 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
     """Render a validated request into a REST TOML input card."""
     category = method_category(request.xc)
     defaults_applied: list[str] = []
+    warnings: list[str] = []
+    if "position_unit" not in request.model_fields_set:
+        defaults_applied.append("position_unit=angstrom")
+        warnings.append(
+            "Coordinate unit was omitted; AIFS explicitly uses angstrom. "
+            "Confirm the source coordinates use angstrom before running REST."
+        )
 
     basis = request.basis
     if basis is None:
@@ -99,6 +108,8 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
 
     lines: list[str] = ["[ctrl]"]
     lines.append(f"xc = {_escape_toml_string(request.xc, multiline=False)}")
+    if request.xc_parser != "legacy":
+        lines.append(f"xc_parser = {_escape_toml_string(request.xc_parser, multiline=False)}")
     lines.append(f"basis_path = {_escape_toml_string(basis_path, multiline=False)}")
     lines.append(f"print_level = {request.print_level}")
     lines.append(f"num_threads = {request.num_threads}")
@@ -116,13 +127,31 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
             _escape_toml_string(item, multiline=False) for item in request.outputs
         )
         lines.append(f"outputs = [{rendered_outputs}]")
+    _append_options(lines, request.rest_options.get("ctrl", {}))
     lines.append("")
     lines.append("[geom]")
     lines.append(f"name = {_escape_toml_string(request.system_name, multiline=False)}")
+    lines.append(f"unit = {_escape_toml_string(request.position_unit, multiline=False)}")
     lines.append("position = " + _escape_toml_string(request.position, multiline=True))
+    _append_options(lines, request.rest_options.get("geom", {}))
+    for section, fields in sorted(request.rest_options.items()):
+        if section not in {"ctrl", "geom"}:
+            lines.extend(["", f"[{section}]"])
+            _append_options(lines, fields)
     rest_input = "\n".join(lines) + "\n"
+    # Independent checks apply to every extension, including direct API calls.
+    if request.rest_options or request.xc_parser != "legacy":
+        from aifs.rest.validator import validate_rest_input
+
+        validation = validate_rest_input(rest_input)
+        if not validation.valid:
+            raise DomainValidationError(
+                "invalid_rest_options", "; ".join(issue.message for issue in validation.errors)
+            )
+        warnings.extend(issue.message for issue in validation.warnings)
 
     effective_settings: dict[str, object] = {
+        "position_unit": request.position_unit,
         "xc": request.xc,
         "basis": basis,
         "basis_path": basis_path,
@@ -134,11 +163,41 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
         "num_threads": request.num_threads,
         "empirical_dispersion": request.empirical_dispersion,
         "outputs": request.outputs,
+        "xc_parser": request.xc_parser,
+        "rest_options": request.rest_options,
+        "rest_source_commit": UPSTREAM_COMMIT,
+        "rest_source_checked_date": CHECKED_DATE,
+        "validation_scope": "AIFS input checks; REST not executed",
     }
 
     return RestInputResponse(
         rest_input=rest_input,
         effective_settings=effective_settings,
         defaults_applied=defaults_applied,
-        warnings=[],
+        warnings=warnings,
     )
+
+
+def _toml_value(value: object) -> str:
+    if isinstance(value, str):
+        return _escape_toml_string(value, multiline="\n" in value)
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(_toml_value(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return (
+            "{ "
+            + ", ".join(
+                f"{json.dumps(key)} = {_toml_value(item)}" for key, item in sorted(value.items())
+            )
+            + " }"
+        )
+    raise DomainValidationError("invalid_rest_value", "REST options must contain TOML values")
+
+
+def _append_options(lines: list[str], fields: dict[str, object]) -> None:
+    for field, value in sorted(fields.items()):
+        lines.append(f"{field} = {_toml_value(value)}")

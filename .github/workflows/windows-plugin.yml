@@ -1,0 +1,62 @@
+name: Build Windows plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aifs-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        id: python
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Build and verify native Windows backend and plugin
+        env:
+          AIFS_PYTHON: ${{ steps.python.outputs.python-path }}
+          PYTHONUTF8: '1'
+        run: ./scripts/build-windows-local.ps1
+      - name: Check plugin and packaging
+        working-directory: dsh-plugin-aifs
+        run: |
+          npm.cmd test
+          if ($LASTEXITCODE -ne 0) { throw 'Plugin tests failed.' }
+          npm.cmd run typecheck
+          if ($LASTEXITCODE -ne 0) { throw 'Plugin typecheck failed.' }
+      - name: Record build provenance
+        run: |
+          New-Item -ItemType Directory -Force reports | Out-Null
+          Copy-Item .local/windows-backend-verification.json reports/
+          Copy-Item build/desktop-plugin/win32-x64/package/build-info.json reports/
+          @{ commit = $env:GITHUB_SHA; run = $env:GITHUB_RUN_ID; platform = 'win32-x64'; desktop_conversation = 'pending' } | ConvertTo-Json | Set-Content -Encoding utf8 reports/provenance.json
+      - name: Upload Windows package and verification reports
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: aifs-windows-x64-${{ github.run_number }}
+          path: |
+            dist/*-windows-x64-local.tgz
+            dist/*-windows-x64-local.tgz.sha256
+            reports/*.json
+          if-no-files-found: error
+          retention-days: 14

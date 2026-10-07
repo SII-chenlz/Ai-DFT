@@ -81,3 +81,43 @@ export const VALIDATE_OUTPUT_SCHEMA = {
     parsed_sections: { type: 'array', required: true, items: { type: 'string' } },
   },
 } as const satisfies ValueSchemaSpec
+
+const EVIDENCE_QUOTE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    quote: { type: 'string', required: true },
+    page: NULLABLE_INTEGER_SCHEMA,
+    section: NULLABLE_STRING_SCHEMA,
+    evidence_type: NULLABLE_STRING_SCHEMA,
+  },
+} as const satisfies ValueSchemaSpec
+
+const EVIDENCE_HIT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    record_id: { type: 'string', required: true },
+    doi: NULLABLE_STRING_SCHEMA,
+    title: NULLABLE_STRING_SCHEMA,
+    system: NULLABLE_STRING_SCHEMA,
+    calculation: NULLABLE_STRING_SCHEMA,
+    benchmark: NULLABLE_STRING_SCHEMA,
+    functional: NULLABLE_STRING_SCHEMA,
+    protocol: NULLABLE_STRING_SCHEMA,
+    experience_type: NULLABLE_STRING_SCHEMA,
+    summary: NULLABLE_STRING_SCHEMA,
+    score: { type: 'number', required: true },
+    evidence: { type: 'array', required: true, items: EVIDENCE_QUOTE_SCHEMA },
+  },
+} as const satisfies ValueSchemaSpec
+
+export const EVIDENCE_SEARCH_OUTPUT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    retrieval_mode: { type: 'string', required: true },
+    query: { type: 'string', required: true },
+    hits: { type: 'array', required: true, items: EVIDENCE_HIT_SCHEMA },
+  },
+} as const satisfies ValueSchemaSpec

@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     #: Root path of the deployed REST basis set pool.
     basis_set_pool: str = ""
 
+    #: SQLite database containing imported literature records and evidence.
+    evidence_db: str = "data/aifs-evidence.sqlite3"
+
+    #: Separate SQLite database for versioned task plans and immutable cards.
+    workflow_db: str = "data/aifs-workflow.sqlite3"
+
+    #: Optional Sentence-Transformers model name. Empty means FTS5 fallback.
+    embedding_model: str = ""
+
+    #: Persistent FAISS index path used when an embedding model is configured.
+    faiss_index: str = "data/aifs-evidence.faiss"
+
 
 @lru_cache
 def get_settings() -> Settings:

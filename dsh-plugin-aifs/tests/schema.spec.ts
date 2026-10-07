@@ -1,5 +1,5 @@
 /**
- * Schema tests: the JSON Schemas the two tools declare are strict and mirror
+ * Schema tests: the JSON Schemas the tools declare are strict and mirror
  * the backend catalogs (fixed-version snapshot). The test double in
  * tests/fixtures compiles these schemas the same way the real registry does,
  * so these assertions describe what argument/output validation enforces.

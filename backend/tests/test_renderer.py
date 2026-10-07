@@ -112,8 +112,18 @@ def test_no_empirical_dispersion_key_when_not_requested(
 
 @pytest.mark.parametrize(
     "xc",
-    ["XYG3", "XYG7", "XYGJOS", "xDH-PBE0", "sBGE2", "ZRPS", "scsRPA", "R-xDH7",
-     "RPA@PBE", "RPA@B3LYP"],
+    [
+        "XYG3",
+        "XYG7",
+        "XYGJOS",
+        "xDH-PBE0",
+        "sBGE2",
+        "ZRPS",
+        "scsRPA",
+        "R-xDH7",
+        "RPA@PBE",
+        "RPA@B3LYP",
+    ],
 )
 def test_double_hybrid_rpa_rejects_empirical_dispersion(
     make_request: Callable[..., RestInputRequest], xc: str
@@ -146,8 +156,16 @@ def test_rendered_card_has_correct_sections_and_field_positions(
     response = render_rest_input(make_request())
     data = tomllib.loads(response.rest_input)
     ctrl = data["ctrl"]
-    required_ctrl = {"xc", "basis_path", "print_level", "num_threads", "job_type",
-                     "charge", "spin", "spin_polarization"}
+    required_ctrl = {
+        "xc",
+        "basis_path",
+        "print_level",
+        "num_threads",
+        "job_type",
+        "charge",
+        "spin",
+        "spin_polarization",
+    }
     assert required_ctrl <= set(ctrl)
     assert "position" not in ctrl
     geom = data["geom"]
@@ -184,9 +202,7 @@ def test_explicit_spin_polarization_kept_without_default(
 ) -> None:
     response = render_rest_input(make_request(spin=1, spin_polarization=True))
     assert tomllib.loads(response.rest_input)["ctrl"]["spin_polarization"] is True
-    assert not any(
-        item.startswith("spin_polarization=") for item in response.defaults_applied
-    )
+    assert not any(item.startswith("spin_polarization=") for item in response.defaults_applied)
 
 
 def test_position_uses_triple_double_quoted_multiline_string(
@@ -224,7 +240,7 @@ def test_stable_field_order_snapshot(
 ) -> None:
     response = render_rest_input(make_request())
     expected = (
-        '[ctrl]\n'
+        "[ctrl]\n"
         'xc = "B3LYP"\n'
         'basis_path = "/data/rest/basis_sets/def2-TZVPP"\n'
         "print_level = 1\n"
@@ -236,6 +252,7 @@ def test_stable_field_order_snapshot(
         "\n"
         "[geom]\n"
         'name = "water"\n'
+        'unit = "angstrom"\n'
         'position = """\n'
         "O 0.0 0.0 0.0\n"
         "H 0.757 0.586 0.0\n"
@@ -285,3 +302,28 @@ def test_request_model_field_order_preserved_in_card(
     assert data["ctrl"]["charge"] == -1.0
     assert data["ctrl"]["spin"] == 2
     assert data["ctrl"]["print_level"] == 2
+
+
+@pytest.mark.parametrize("unit", ["angstrom", "bohr"])
+def test_explicit_geometry_unit_preserves_numbers(make_request, unit: str) -> None:
+    coordinates = "H 0 0 0\nH 0 0 1.4"
+    response = render_rest_input(make_request(position=coordinates, position_unit=unit))
+    geom = tomllib.loads(response.rest_input)["geom"]
+    assert geom["unit"] == unit
+    assert geom["position"] == coordinates
+    assert response.effective_settings["position_unit"] == unit
+    assert "position_unit=angstrom" not in response.defaults_applied
+
+
+def test_legacy_request_omitting_unit_gets_explicit_default_and_warning() -> None:
+    response = render_rest_input(
+        RestInputRequest(
+            system_name="H2",
+            position="H 0 0 0\nH 0 0 0.74",
+            job_type="energy",
+            xc="PBE",
+        )
+    )
+    assert tomllib.loads(response.rest_input)["geom"]["unit"] == "angstrom"
+    assert "position_unit=angstrom" in response.defaults_applied
+    assert any("Confirm the source coordinates" in warning for warning in response.warnings)

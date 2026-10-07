@@ -7,6 +7,9 @@
  * harness workspace the real package resolves and this mirror can be deleted.
  */
 declare module '@deepseek-ai/cordis' {
+  import type { SubprocessService } from '../desktop/runtime.ts'
+  import type { SkillService } from '../desktop/skill.ts'
+  import type { ConnectionService } from '../desktop/routes.ts'
   import type { ToolRuntime } from '@deepseek-ai/dsh-tools'
 
   export interface SystemPromptSection {
@@ -25,6 +28,10 @@ declare module '@deepseek-ai/cordis' {
     /** Prompt registry used to add model-facing domain guidance. */
     systemPrompt: SystemPrompt
     /** Register a lifecycle effect; the callback's return value runs on dispose. */
+    subprocess: SubprocessService
+    skills: SkillService
+    connection: ConnectionService
+    inject(services: string[], callback: (child: Context) => void): unknown
     effect(fn: () => () => void | Promise<void>): void
   }
 }

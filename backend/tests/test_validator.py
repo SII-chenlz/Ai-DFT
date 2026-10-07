@@ -6,9 +6,31 @@ fixture, so validator behavior never depends on the renderer implementation.
 
 from collections.abc import Callable
 
+import pytest
+
 from aifs.models import RestInputRequest
 from aifs.rest.renderer import render_rest_input
 from aifs.rest.validator import validate_rest_input
+
+
+@pytest.mark.parametrize("unit", ["angstrom", "bohr", "Angstrom", "Bohr"])
+def test_geometry_units_accepted(valid_card: str, unit: str) -> None:
+    result = validate_rest_input(valid_card.replace('unit = "angstrom"', f'unit = "{unit}"'))
+    assert result.valid
+    assert not result.warnings
+
+
+@pytest.mark.parametrize("value", ['"nm"', '""', "7", "true"])
+def test_bad_geometry_unit_rejected(valid_card: str, value: str) -> None:
+    result = validate_rest_input(valid_card.replace('unit = "angstrom"', f"unit = {value}"))
+    assert not result.valid
+    assert any(issue.code == "unsupported_unit" for issue in result.errors)
+
+
+def test_legacy_card_without_unit_warns_without_rewriting(valid_card: str) -> None:
+    result = validate_rest_input(valid_card.replace('unit = "angstrom"\n', ""))
+    assert result.valid
+    assert any(issue.code == "unit_not_recorded" for issue in result.warnings)
 
 
 def test_accepts_renderer_output(make_request: Callable[..., RestInputRequest]) -> None:
@@ -42,62 +64,45 @@ def test_missing_geom_section_rejected(valid_card: str) -> None:
 def test_forged_keyword_method_rejected(valid_card: str) -> None:
     card = valid_card.replace('xc = "PBE"', 'method = "PBE"')
     result = validate_rest_input(card)
-    assert any(
-        e.code == "forbidden_keyword" and e.field == "method" for e in result.errors
-    )
+    assert any(e.code == "forbidden_keyword" and e.field == "method" for e in result.errors)
 
 
 def test_forged_keyword_coord_rejected(valid_card: str) -> None:
     card = valid_card.replace('name = "water"', 'coord = "O 0 0 0"')
     result = validate_rest_input(card)
-    assert any(
-        e.code == "forbidden_keyword" and e.field == "coord" for e in result.errors
-    )
+    assert any(e.code == "forbidden_keyword" and e.field == "coord" for e in result.errors)
 
 
 def test_forged_keyword_molecule_rejected(valid_card: str) -> None:
     card = valid_card.replace('job_type = "energy"', 'molecule = "water"')
     result = validate_rest_input(card)
-    assert any(
-        e.code == "forbidden_keyword" and e.field == "molecule" for e in result.errors
-    )
+    assert any(e.code == "forbidden_keyword" and e.field == "molecule" for e in result.errors)
 
 
 def test_spin_in_geom_rejected(valid_card: str) -> None:
     card = valid_card + "\n[geom.spin]\nvalue = 1\n"
     result = validate_rest_input(card)
-    assert any(
-        e.code == "field_in_wrong_section" and e.field == "spin" for e in result.errors
-    )
+    assert any(e.code == "field_in_wrong_section" and e.field == "spin" for e in result.errors)
 
 
 def test_charge_in_geom_rejected(valid_card: str) -> None:
     card = valid_card.replace('name = "water"', 'name = "water"\ncharge = 0.0')
     result = validate_rest_input(card)
-    assert any(
-        e.code == "field_in_wrong_section" and e.field == "charge"
-        for e in result.errors
-    )
+    assert any(e.code == "field_in_wrong_section" and e.field == "charge" for e in result.errors)
 
 
 def test_spin_polarization_in_geom_rejected(valid_card: str) -> None:
-    card = valid_card.replace(
-        'name = "water"', 'name = "water"\nspin_polarization = true'
-    )
+    card = valid_card.replace('name = "water"', 'name = "water"\nspin_polarization = true')
     result = validate_rest_input(card)
     assert any(
-        e.code == "field_in_wrong_section" and e.field == "spin_polarization"
-        for e in result.errors
+        e.code == "field_in_wrong_section" and e.field == "spin_polarization" for e in result.errors
     )
 
 
 def test_position_in_ctrl_rejected(valid_card: str) -> None:
     card = valid_card.replace("spin_polarization = false", 'position = "O 0 0 0"')
     result = validate_rest_input(card)
-    assert any(
-        e.code == "field_in_wrong_section" and e.field == "position"
-        for e in result.errors
-    )
+    assert any(e.code == "field_in_wrong_section" and e.field == "position" for e in result.errors)
 
 
 def test_toml_syntax_error_returns_only_syntax_issue() -> None:
@@ -138,43 +143,33 @@ def test_invalid_job_type_rejected(valid_card: str) -> None:
 def test_empty_basis_path_rejected(valid_card: str) -> None:
     card = valid_card.replace('basis_path = "/pool/def2-TZVPP"', 'basis_path = ""')
     result = validate_rest_input(card)
-    assert any(
-        e.code == "invalid_basis_path" and e.field == "basis_path"
-        for e in result.errors
-    )
+    assert any(e.code == "invalid_basis_path" and e.field == "basis_path" for e in result.errors)
 
 
 def test_missing_basis_path_rejected(valid_card: str) -> None:
     card = valid_card.replace('basis_path = "/pool/def2-TZVPP"\n', "")
     result = validate_rest_input(card)
     assert any(
-        e.code == "missing_required_field" and e.field == "basis_path"
-        for e in result.errors
+        e.code == "missing_required_field" and e.field == "basis_path" for e in result.errors
     )
 
 
 def test_spin_zero_rejected(valid_card: str) -> None:
     card = valid_card.replace("spin = 1", "spin = 0")
     result = validate_rest_input(card)
-    assert any(
-        e.code == "out_of_range" and e.field == "spin" for e in result.errors
-    )
+    assert any(e.code == "out_of_range" and e.field == "spin" for e in result.errors)
 
 
 def test_num_threads_zero_rejected(valid_card: str) -> None:
     card = valid_card.replace("num_threads = 10", "num_threads = 0")
     result = validate_rest_input(card)
-    assert any(
-        e.code == "out_of_range" and e.field == "num_threads" for e in result.errors
-    )
+    assert any(e.code == "out_of_range" and e.field == "num_threads" for e in result.errors)
 
 
 def test_print_level_negative_rejected(valid_card: str) -> None:
     card = valid_card.replace("print_level = 1", "print_level = -1")
     result = validate_rest_input(card)
-    assert any(
-        e.code == "out_of_range" and e.field == "print_level" for e in result.errors
-    )
+    assert any(e.code == "out_of_range" and e.field == "print_level" for e in result.errors)
 
 
 def test_singlet_with_spin_polarization_warns(valid_card: str) -> None:
@@ -249,17 +244,14 @@ def test_position_not_a_string_rejected(valid_card: str) -> None:
         'position = ["O", "0.0", "0.0", "0.0"]',
     )
     result = validate_rest_input(card)
-    assert any(
-        e.code == "invalid_type" and e.field == "position" for e in result.errors
-    )
+    assert any(e.code == "invalid_type" and e.field == "position" for e in result.errors)
 
 
 def test_missing_required_ctrl_field_rejected(valid_card: str) -> None:
     card = valid_card.replace("num_threads = 10\n", "")
     result = validate_rest_input(card)
     assert any(
-        e.code == "missing_required_field" and e.field == "num_threads"
-        for e in result.errors
+        e.code == "missing_required_field" and e.field == "num_threads" for e in result.errors
     )
 
 
@@ -267,8 +259,7 @@ def test_missing_spin_polarization_rejected(valid_card: str) -> None:
     card = valid_card.replace("spin_polarization = false\n", "")
     result = validate_rest_input(card)
     assert any(
-        e.code == "missing_required_field" and e.field == "spin_polarization"
-        for e in result.errors
+        e.code == "missing_required_field" and e.field == "spin_polarization" for e in result.errors
     )
 
 
@@ -288,15 +279,11 @@ def test_nonfinite_charge_rejected(valid_card: str) -> None:
 def test_bool_is_not_a_valid_spin(valid_card: str) -> None:
     card = valid_card.replace("spin = 1", "spin = true")
     result = validate_rest_input(card)
-    assert any(
-        e.code == "invalid_type" and e.field == "spin" for e in result.errors
-    )
+    assert any(e.code == "invalid_type" and e.field == "spin" for e in result.errors)
 
 
 def test_unknown_output_item_rejected(valid_card: str) -> None:
-    card = valid_card.replace(
-        'job_type = "energy"', 'job_type = "energy"\noutputs = ["spectra"]'
-    )
+    card = valid_card.replace('job_type = "energy"', 'job_type = "energy"\noutputs = ["spectra"]')
     result = validate_rest_input(card)
     assert any(e.code == "unknown_output" for e in result.errors)
 
@@ -309,27 +296,26 @@ def test_rest_outputs_accepted(valid_card: str) -> None:
     assert result.valid is True
 
 
-def test_unknown_ctrl_keyword_is_warning(valid_card: str) -> None:
+def test_unknown_ctrl_keyword_cannot_be_verified(valid_card: str) -> None:
     card = valid_card.replace(
         'job_type = "energy"', 'job_type = "energy"\nfuture_keyword = "value"'
     )
     result = validate_rest_input(card)
-    assert result.valid is True
-    assert result.errors == []
+    assert result.valid is False
+    assert any(e.code == "invalid_rest_options" for e in result.errors)
     assert any(
         w.code == "unknown_keyword" and w.section == "ctrl" and w.field == "future_keyword"
         for w in result.warnings
     )
 
 
-def test_unknown_top_level_section_is_warning(valid_card: str) -> None:
+def test_unknown_top_level_section_cannot_be_verified(valid_card: str) -> None:
     card = valid_card + "\n[future_section]\nvalue = true\n"
     result = validate_rest_input(card)
-    assert result.valid is True
-    assert result.errors == []
+    assert result.valid is False
+    assert any(e.code == "invalid_rest_options" for e in result.errors)
     assert any(
-        w.code == "unknown_section" and w.section == "future_section"
-        for w in result.warnings
+        w.code == "unknown_section" and w.section == "future_section" for w in result.warnings
     )
 
 

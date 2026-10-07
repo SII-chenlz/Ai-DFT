@@ -65,6 +65,8 @@ export interface GenerateRestInputArgs {
   position: string
   job_type: 'energy' | 'opt' | 'force' | 'numerical dipole'
   xc: string
+  xc_parser?: 'legacy' | 'parse_xc'
+  rest_options?: Record<string, Record<string, JsonValue>>
   basis?: string
   charge?: number
   spin?: number
@@ -105,6 +107,41 @@ export interface ValidateRestInputResult {
   errors: ValidationIssue[]
   warnings: ValidationIssue[]
   parsed_sections: string[]
+}
+
+export interface EvidenceSearchArgs {
+  system_description: string
+  calculation_goal?: string
+  candidate_functionals?: string[]
+  limit?: number
+}
+
+export interface EvidenceQuote {
+  quote: string
+  page: number | null
+  section: string | null
+  evidence_type: string | null
+}
+
+export interface EvidenceHit {
+  record_id: string
+  doi: string | null
+  title: string | null
+  system: string | null
+  calculation: string | null
+  benchmark: string | null
+  functional: string | null
+  protocol: string | null
+  experience_type: string | null
+  summary: string | null
+  score: number
+  evidence: EvidenceQuote[]
+}
+
+export interface EvidenceSearchResult {
+  retrieval_mode: string
+  query: string
+  hits: EvidenceHit[]
 }
 
 /** A settled POST: either a 2xx body or a 422 domain error envelope. */
@@ -186,7 +223,7 @@ export function assertClientConfig(config: AifsClientConfig): void {
 export class AifsBackendClient {
   private readonly config: AifsClientConfig
 
-  constructor(config: AifsClientConfig) {
+  constructor(config: AifsClientConfig, private readonly resolveBaseUrl?: (signal: AbortSignal) => Promise<string>) {
     assertClientConfig(config)
     this.config = config
   }
@@ -231,15 +268,44 @@ export class AifsBackendClient {
     return result.body as unknown as ValidateRestInputResult
   }
 
+  /** Retrieve source-linked literature evidence for LLM reasoning. */
+  async searchEvidence(request: EvidenceSearchArgs, signal: AbortSignal): Promise<EvidenceSearchResult> {
+    const result = await this.post('/v1/evidence/search', request, signal)
+    if (result.kind !== 'ok' || result.status !== 200) {
+      throw new AifsBackendError(
+        'AIFS backend returned an unexpected response for /v1/evidence/search',
+        result.kind === 'ok' ? result.status : undefined,
+      )
+    }
+    return result.body as unknown as EvidenceSearchResult
+  }
+
+  /** Plan endpoints return structured domain failures so the agent can revise its draft. */
+  async workflow(method: 'GET' | 'POST' | 'PUT', path: string, body: JsonValue | undefined, signal: AbortSignal): Promise<JsonValue> {
+    const result = await this.request(method, path, body, signal, true)
+    if (result.kind === 'domain-error') {
+      return { ok: false, error: { code: result.code, message: result.message } }
+    }
+    return { ok: true, ...result.body as Record<string, JsonValue> }
+  }
+
   private async post(path: string, requestBody: unknown, callerSignal: AbortSignal): Promise<PostResult> {
+    return this.request('POST', path, requestBody, callerSignal, false)
+  }
+
+  private async request(method: 'GET' | 'POST' | 'PUT', path: string, requestBody: unknown, callerSignal: AbortSignal, workflow: boolean): Promise<PostResult> {
     const fused = fuseSignals(callerSignal, this.config.requestTimeoutMs)
     try {
       let response: Response
       try {
-        response = await fetch(new URL(path, this.config.baseUrl), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(requestBody),
+        // Managed mode resolves the owned server for every call, including
+        // after a retry changes its port. Never fall back to the external URL.
+        const baseUrl = this.resolveBaseUrl ? await this.resolveBaseUrl(fused.signal) : this.config.baseUrl
+        if (fused.signal.aborted) throw fused.signal.reason
+        response = await fetch(new URL(path, baseUrl), {
+          method,
+          headers: requestBody === undefined ? undefined : { 'content-type': 'application/json' },
+          body: requestBody === undefined ? undefined : JSON.stringify(requestBody),
           signal: fused.signal,
         })
       } catch (error) {
@@ -261,6 +327,15 @@ export class AifsBackendClient {
       }
       if (response.ok) return { kind: 'ok', status: response.status, body }
       const envelope = readErrorEnvelope(body)
+      if (workflow && response.status >= 400 && response.status < 500) {
+        const record = body as Record<string, JsonValue>
+        const error = record?.error as Record<string, JsonValue> | undefined
+        return {
+          kind: 'domain-error',
+          code: typeof error?.code === 'string' ? error.code : `http_${response.status}`,
+          message: typeof error?.message === 'string' ? error.message : JSON.stringify(error?.detail ?? body),
+        }
+      }
       if (response.status === 422 && envelope !== undefined && envelope.code !== 'request_validation_error') {
         return { kind: 'domain-error', code: envelope.code, message: envelope.message }
       }

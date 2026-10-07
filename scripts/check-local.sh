@@ -17,15 +17,16 @@ BASE_URL="http://$AIFS_BACKEND_HOST:$AIFS_BACKEND_PORT"
 command -v curl >/dev/null 2>&1 || { echo "需要 curl" >&2; exit 2; }
 command -v python >/dev/null 2>&1 || { echo "需要 python" >&2; exit 2; }
 
-curl -fsS "$BASE_URL/health" | python -c '
+curl -fsS "$BASE_URL/health" | PYTHONPATH="$ROOT_DIR/backend/src" python -c '
 import json, sys
+from aifs import __version__
 data = json.load(sys.stdin)
-assert data == {"status": "ok", "service": "aifs-api", "version": "0.1.0"}, data
+assert data == {"status": "ok", "service": "aifs-api", "version": __version__}, data
 '
 
 GENERATED="$(curl -fsS -X POST "$BASE_URL/v1/rest-inputs" \
   -H 'content-type: application/json' \
-  --data-raw '{"system_name":"water","position":"O 0 0 0\nH 0 1 0\nH 0 -1 0","job_type":"energy","xc":"PBE0","charge":0,"spin":1}')"
+  --data-raw '{"system_name":"water","position":"O 0 0 0\nH 0 1 0\nH 0 -1 0","position_unit":"angstrom","job_type":"energy","xc":"PBE0","charge":0,"spin":1}')"
 
 REST_INPUT="$(python -c 'import json,sys; d=json.loads(sys.argv[1]); assert d["rest_input"]; print(d["rest_input"], end="")' "$GENERATED")"
 VALIDATION_PAYLOAD="$(python -c 'import json,sys; print(json.dumps({"rest_input": sys.argv[1]}))' "$REST_INPUT")"

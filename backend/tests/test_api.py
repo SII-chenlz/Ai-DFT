@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from aifs import __version__
 from aifs.api import app
 from aifs.config import get_settings
 from aifs.rest import tomllib
@@ -15,7 +16,7 @@ client = TestClient(app)
 def test_health_endpoint() -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "aifs-api", "version": "0.1.0"}
+    assert response.json() == {"status": "ok", "service": "aifs-api", "version": __version__}
 
 
 def test_create_rest_input_returns_200_with_parseable_card(
@@ -121,3 +122,54 @@ def test_validate_endpoint_schema_error_422() -> None:
 def test_recommendations_route_does_not_exist() -> None:
     response = client.get("/v1/recommendations")
     assert response.status_code == 404
+
+
+def test_evidence_import_and_search_are_source_linked(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    records = tmp_path / "records.jsonl"
+    records.write_text(
+        json.dumps(
+            {
+                "record_id": "MREC-api",
+                "source": {"doi": "10.1/api", "title": "Water DFT"},
+                "context": {
+                    "system": "water molecule",
+                    "calculation": "geometry optimization",
+                    "benchmark": "CCSD(T)",
+                },
+                "method": {"functional": "PBE0", "protocol": "def2-TZVP"},
+                "experience": {"type": "evaluation", "summary": "good geometry"},
+                "evidence": [
+                    {
+                        "quote": "good geometry",
+                        "page": 2,
+                        "section": "Results",
+                        "evidence_type": "text",
+                    }
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    db = tmp_path / "api.sqlite3"
+    monkeypatch.setenv("AIFS_EVIDENCE_DB", str(db))
+    get_settings.cache_clear()
+    imported = client.post("/v1/evidence/import", json={"records_path": str(records)})
+    assert imported.status_code == 200
+    assert imported.json() == {"imported": 1}
+    response = client.post(
+        "/v1/evidence/search",
+        json={
+            "system_description": "water molecule",
+            "calculation_goal": "geometry optimization",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["retrieval_mode"] == "lexical_fallback"
+    assert body["hits"][0]["doi"] == "10.1/api"
+    assert body["hits"][0]["evidence"][0]["page"] == 2

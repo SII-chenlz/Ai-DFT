@@ -16,14 +16,24 @@ fi
 : "${AIFS_BACKEND_HOST:=127.0.0.1}"
 : "${AIFS_BACKEND_PORT:=8000}"
 : "${AIFS_BASIS_SET_POOL:=$ROOT_DIR/.local/basis_set_pool}"
+export AIFS_BACKEND_MODE=external
 export DEEPSEEK_HARNESS_DIR DSH_HOME AIFS_BACKEND_HOST AIFS_BACKEND_PORT AIFS_BASIS_SET_POOL
+cd "$ROOT_DIR"
 
-if [[ -z "${DEEPSEEK_API_KEY:-}" ]]; then
-  echo "未设置 DEEPSEEK_API_KEY；请在 .env.local 中填写后再启动" >&2
-  exit 2
-fi
+# DSH resolves credentials for the chosen model provider (stored keys,
+# account sign-in, or environment). AIFS must not require a DeepSeek key
+# before users can open the UI and configure a different provider.
 
 "$ROOT_DIR/scripts/install-plugin-local.sh"
+
+# pnpm checks workspace dependencies before invoking the DSH CLI. Match the
+# store used for the installed workspace so startup stays a read-only check.
+if [[ -z "${npm_config_store_dir:-}" && -f "$DEEPSEEK_HARNESS_DIR/node_modules/.modules.yaml" ]]; then
+  INSTALLED_STORE="$(sed -nE 's/^[[:space:]]*"storeDir": "([^"]+)"[,]?$/\1/p' "$DEEPSEEK_HARNESS_DIR/node_modules/.modules.yaml" | head -n 1)"
+  if [[ -n "$INSTALLED_STORE" ]]; then
+    export npm_config_store_dir="$INSTALLED_STORE"
+  fi
+fi
 
 BACKEND_LOG="${AIFS_BACKEND_LOG:-$ROOT_DIR/.local/aifs-backend.log}"
 mkdir -p "$(dirname "$BACKEND_LOG")"

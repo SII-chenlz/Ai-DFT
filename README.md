@@ -1,128 +1,29 @@
 # AIFS
 
-AIFS（AI Functional Selection）是一个面向分子量子化学的智能体原型。当前版本可以通过 DeepSeek Harness 对话界面生成并独立校验 [REST](https://gitee.com/restgroup/rest) 的 TOML 输入卡。
+AIFS 是 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 的分子计算助手插件。用户通过对话选择泛函与基组、拆分计算任务、保存计划，并获得经过校验的 [REST](https://gitee.com/restgroup/rest) `.in` 输入卡。
 
-当前版本**只生成和校验输入卡**，不执行 REST 计算，也尚未接入知识图谱或文献 RAG。
-
-## 本地界面
-
-![AIFS 在 DeepSeek Harness Web 中运行的本地界面](assets/aifs-harness-home.png)
-
-```text
-自然语言需求 → DeepSeek Harness → AIFS Tool → FastAPI
-                                           ↓
-                              REST TOML 输入卡生成与校验
-```
-
-## 环境要求
-
-- macOS 或 Linux
-- Windows 10/11：通过 WSL2（推荐 Ubuntu）支持；当前不支持原生 PowerShell 启动脚本
-- Git
-- Conda（Miniconda 或 Anaconda）
-- Node.js 22.12 或更高版本（包含 Corepack）
+仓库包含 TypeScript 插件、规划 Skill 和 Python 后端。支持逐任务设置方法，保留证据、计划版本及卡片记录；当前只准备输入，不运行计算。支持范围见 [REST 能力](packaging/rest-coverage.md)。
 
 ## 安装
 
-建议将 AIFS 和官方 DeepSeek Harness 克隆到同一个目录下：
+1. 打开 DSH 桌面版，在「插件 → 添加插件」填写 `.tgz` 安装包的绝对路径，无需解压。
+2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
+3. 在 DSH「设置 → 模型」配置接口与 API Key，选择支持工具调用的模型。
 
-```text
-workspace/
-├── AIFS/
-└── deepseek-harness/
-```
+当前可用包：`dist/aifs-dsh-0.1.12-macos-arm64-local.tgz`。Windows x64 已有 [原生构建入口](scripts/README.md#打包)，安装包与 Windows DSH 流程尚未验收；Intel Mac 暂无安装包。
 
-```bash
-mkdir aifs-workspace
-cd aifs-workspace
-git clone https://github.com/SII-chenlz/Ai-DFT.git AIFS
-git clone https://github.com/deepseek-ai/deepseek-harness.git deepseek-harness
-```
+用户无需安装 Python 或 Node。升级时卸载旧插件、安装新版，完全退出并重开 DSH（Mac 用 `⌘Q`）。
 
-### 1. 创建 Python 环境
+## 使用
 
-```bash
-conda create -n aifs python=3.11 -y
-conda activate aifs
-cd AIFS
-python -m pip install -e './backend[dev]'
-```
+例如：
 
-### 2. 安装并构建 DeepSeek Harness
+> 我想优化水分子，再计算单点电子能。请推荐适合的方案，让我分别选择优化和单点的泛函、基组，保存计划并准备输入卡。
 
-```bash
-cd ../deepseek-harness
-corepack enable
-pnpm install
-pnpm run build
-```
+按提示补充结构、坐标单位、电荷和自旋。当前具备输入条件的任务可生成 `.in`；依赖优化结果的任务等待结果坐标及其单位。输入卡可作为附件交付，或直接查看正文。
 
-如果终端提示找不到 `pnpm`，关闭并重新打开终端后再执行 `pnpm --version`。也可以先使用 `corepack pnpm --version` 检查 Node 的 Corepack 是否可用。
+对比实验 ADE 时，计划包含阴离子和中性的频率／零点能步骤；电子能差与含零点能的 ADE 分别标明。计算仍由用户运行，结果和单位需补回。
 
-### 3. 配置密钥
+计划、证据与卡片保存在 `$DSH_HOME/aifs/`，默认 `~/.dsh/aifs/`。重开后可要求找回计划；实际运行 REST 时需使用计算环境中的基组路径。
 
-回到 AIFS 目录：
-
-```bash
-cd ../AIFS
-cp .env.example .env.local
-```
-
-编辑 `.env.local`，只填写这一项：
-
-```bash
-DEEPSEEK_API_KEY=你的新密钥
-```
-
-`.env.local` 已被 Git 忽略，绝不能提交、截图或粘贴到聊天中。若密钥曾泄露，请在 DeepSeek 控制台撤销并重新生成。
-
-## 启动
-
-确认仍处于 `aifs` Conda 环境后运行：
-
-```bash
-conda activate aifs
-cd /你的路径/AIFS
-./scripts/start-local.sh
-```
-
-脚本会自动：
-
-1. 将本地 AIFS 插件挂载到 Harness Web profile；
-2. 启动 FastAPI 后端（`http://127.0.0.1:8000`）；
-3. 启动 Harness Web（`http://127.0.0.1:3080`）。
-
-浏览器没有自动打开时，访问 `http://127.0.0.1:3080`。使用 `Ctrl+C` 停止服务。
-
-## 常用本地检查
-
-另开一个已激活 `aifs` 环境的终端：
-
-```bash
-./scripts/check-local.sh
-```
-
-该命令会调用本地后端，生成一张示例 REST TOML 输入卡并进行独立校验。
-
-## 项目结构
-
-```text
-backend/             FastAPI：REST 规则、输入卡生成与校验
-dsh-plugin-aifs/     TypeScript：DeepSeek Harness Tool 插件
-profiles/            可选 Harness profile 配置
-scripts/             本地启动与检查脚本
-```
-
-## 开发验证
-
-```bash
-pytest backend/tests -q
-(cd dsh-plugin-aifs && npm test)
-(cd dsh-plugin-aifs && npm run typecheck)
-```
-
-## 贡献与致谢
-
-- 项目发起与维护：SII-chenlz
-- AI 辅助开发：ChatGPT（OpenAI）与 DeepSeek
-- 智能体运行框架：DeepSeek Harness
+开发与打包见 [脚本文档](scripts/README.md)，数据迁移见 [安装说明](packaging/README.md)。

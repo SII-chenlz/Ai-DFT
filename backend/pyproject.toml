@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aifs-backend"
-version = "0.1.0"
+dynamic = ["version"]
 description = "AIFS FastAPI domain backend: REST method catalogs, TOML input rendering and independent validation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,9 +24,17 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.9",
 ]
+retrieval-test = ["faiss-cpu==1.13.2", "numpy==2.2.6"]
+retrieval = [
+    "sentence-transformers>=3.0",
+    "faiss-cpu>=1.8",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "aifs.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -11,6 +11,7 @@ import {
   AifsBackendResponseTooLargeError,
   AifsBackendTimeoutError,
   type GenerateRestInputArgs,
+  type EvidenceSearchArgs,
 } from '../src/client.ts'
 
 const CONFIG = {
@@ -27,6 +28,10 @@ const ARGS: GenerateRestInputArgs = {
 }
 
 const CARD = '[ctrl]\nxc = "PBE"\n'
+const EVIDENCE_ARGS: EvidenceSearchArgs = {
+  system_description: 'open-shell nickel cluster',
+  calculation_goal: 'spin-state ordering',
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -141,7 +146,60 @@ describe('AifsBackendClient.validate', () => {
   })
 })
 
+describe('AifsBackendClient.searchEvidence', () => {
+  it('POSTs the natural-language query and returns source-linked hits', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({
+      retrieval_mode: 'lexical_fallback',
+      query: 'open-shell nickel cluster spin-state ordering',
+      hits: [{
+        record_id: 'MREC-1', doi: '10.1/example', title: 'Cluster', system: 'Ni cluster',
+        calculation: 'spin state', benchmark: null, functional: 'PBE0', protocol: 'def2-TZVP',
+        experience_type: 'evaluation', summary: 'comparison', score: 0.5,
+        evidence: [{ quote: 'PBE0 comparison', page: 3, section: 'Results', evidence_type: 'text' }],
+      }],
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await new AifsBackendClient(CONFIG).searchEvidence(EVIDENCE_ARGS, new AbortController().signal)
+    expect(result.retrieval_mode).toBe('lexical_fallback')
+    expect(result.hits[0]?.doi).toBe('10.1/example')
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
+    expect(url.toString()).toBe('http://127.0.0.1:8000/v1/evidence/search')
+    expect(JSON.parse(init.body as string)).toEqual(EVIDENCE_ARGS)
+  })
+
+  it('throws on backend schema failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ error: { code: 'request_validation_error', detail: [] } }, 422)))
+    await expect(new AifsBackendClient(CONFIG).searchEvidence(EVIDENCE_ARGS, new AbortController().signal))
+      .rejects.toThrow(AifsBackendError)
+  })
+})
+
 describe('timeouts, aborts and size caps', () => {
+  it('uses the current owned address after a port change and never falls back after failure', async () => {
+    const resolver = vi.fn().mockResolvedValueOnce('http://127.0.0.1:49101')
+      .mockResolvedValueOnce('http://127.0.0.1:49102').mockRejectedValueOnce(new Error('owned startup failed'))
+    const fetchMock = vi.fn(async (_url: URL) => jsonResponse({ methods: {} }))
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new AifsBackendClient(CONFIG, resolver)
+    for (let i = 0; i < 2; i++) await client.workflow('GET', '/v1/rest-capabilities', undefined, new AbortController().signal)
+    expect(fetchMock.mock.calls.map(call => String(call[0]))).toEqual([
+      'http://127.0.0.1:49101/v1/rest-capabilities', 'http://127.0.0.1:49102/v1/rest-capabilities',
+    ])
+    await expect(client.workflow('GET', '/v1/rest-capabilities', undefined, new AbortController().signal))
+      .rejects.toThrow('owned startup failed')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('includes owned-server readiness waiting in the request timeout', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new AifsBackendClient({ ...CONFIG, requestTimeoutMs: 20 }, signal => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+    }))
+    await expect(client.workflow('GET', '/v1/rest-capabilities', undefined, new AbortController().signal))
+      .rejects.toThrow(AifsBackendTimeoutError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
   it('aborts after requestTimeoutMs and throws the timeout error', async () => {
     vi.stubGlobal('fetch', abortPendingFetch())
     const client = new AifsBackendClient({ ...CONFIG, requestTimeoutMs: 30 })

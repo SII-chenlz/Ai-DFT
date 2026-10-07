@@ -1,23 +1,35 @@
 """Versioned REST keyword catalogs.
 
-Every entry below is derived from the official REST README:
+Baseline entries come from the official REST README:
 
     https://gitee.com/restgroup/rest/blob/master/README.md
 
-read on 2026-08-23. The catalogs are plain in-process data: runtime error
+read on 2026-10-04. Added methods are checked against the source dispatch
+at the commit recorded in capabilities.py.
+The catalogs are plain in-process data: runtime error
 messages never depend on the network.
 """
 
 from __future__ import annotations
 
 SOURCE_URL = "https://gitee.com/restgroup/rest/blob/master/README.md"
-SOURCE_READ_DATE = "2026-08-23"
+SOURCE_READ_DATE = "2026-10-04"
+
+# Geometry keyword checked separately from the older method catalog.
+# REST README, [geom] section, read 2026-10-03. Never rely on an omitted unit.
+GEOMETRY_UNITS = frozenset({"angstrom", "bohr"})
+GEOMETRY_SOURCE_READ_DATE = "2026-10-03"
 
 # Self-consistent-field methods. Default basis set: def2-TZVPP.
 SCF_METHODS: frozenset[str] = frozenset(
     {
         "HF",
-        "LDA",
+        # LDA is a family, not a recognized name in the pinned legacy parser.
+        "SVWN",
+        "SVWN-RPA",
+        "PZ-LDA",
+        "PW-LDA",
+        "LDA_X_SLATER",
         "BLYP",
         "PBE",
         "xPBE",
@@ -35,6 +47,16 @@ SCF_METHODS: frozenset[str] = frozenset(
         "M06-2X",
         "SCAN0",
         "MN15",
+        # Additional legacy dispatch in src/dft/libxc_helper.rs at pinned commit.
+        "wB97X",
+        "CAM-B3LYP",
+        "LC-BLYP",
+        "LC-wPBE",
+        "HSE06",
+        "HSE03",
+        "r2SCAN",
+        "revSCAN",
+        "TPSSh",
     }
 )
 
@@ -97,9 +119,7 @@ def normalize_method_name(value: str) -> str | None:
 
 def method_category(name: str) -> str:
     """Return "scf" or "post_scf" for a canonical method name."""
-    if name in SCF_METHODS:
-        return "scf"
-    return "post_scf"
+    return "post_scf" if name in POST_SCF_METHODS else "scf"
 
 
 def default_basis(category: str) -> str:
