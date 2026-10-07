@@ -158,7 +158,7 @@ def main():
             report = {
                 "native_backend": "passed",
                 "aifs_version": runtime["version"],
-                "platform": "darwin-arm64",
+                "platform": runtime["target"],
                 "executable_sha256": hashlib.sha256(
                     executable.read_bytes()
                 ).hexdigest(),
