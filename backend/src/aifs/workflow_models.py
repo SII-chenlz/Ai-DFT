@@ -49,7 +49,7 @@ class EvidenceRef(StrictModel):
 class MethodDecision(StrictModel):
     xc: str = Field(min_length=1, max_length=100)
     xc_parser: Literal["legacy", "parse_xc"] = "legacy"
-    basis: str | None = None
+    basis: str | None = Field(default=None, min_length=1, max_length=200)
     empirical_dispersion: Literal["d3", "d3bj", "d4"] | None = None
     source: Literal["user", "evidence", "provisional"]
     rationale: str = Field(min_length=1, max_length=4000)
@@ -249,6 +249,12 @@ def task_status(
             task_id=task.task_id,
             state="needs_decision",
             blockers=["provisional method needs user confirmation or evidence"],
+        )
+    if task.decision.basis is None:
+        return TaskStatus(
+            task_id=task.task_id,
+            state="needs_decision",
+            blockers=["basis decision is missing; selecting a functional does not select a basis"],
         )
     ctrl = {
         **task.rest_options.get("ctrl", {}),

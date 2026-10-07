@@ -16,7 +16,8 @@ const references = { type: 'array', items: evidence } as const
 const decision = {
   type: 'object', additionalProperties: false,
   properties: {
-    xc: { type: 'string', required: true }, basis: nullableString,
+    xc: { type: 'string', required: true },
+    basis: { ...nullableString, description: 'Confirmed orbital basis inside the configured pool. Null is allowed in a saved draft but blocks task-card generation; selecting xc does not select its default basis.' },
     xc_parser: { type: 'string', enum: ['legacy', 'parse_xc'], description: 'Defaults to legacy. Set parse_xc for methods listed on that path by get_rest_capabilities.' },
     empirical_dispersion: { oneOf: [{ type: 'string', enum: ['d3', 'd3bj', 'd4'] }, { type: 'null' }] },
     source: { type: 'string', enum: ['user', 'evidence', 'provisional'], required: true },

@@ -78,7 +78,7 @@ try {
     question: 'Verify bundled tool helper with H2', goal: 'other', tasks: [{
       task_id: 'h2', title: 'H2 energy', purpose: 'Get energy', kind: 'rest', job_type: 'energy', system_name: 'H2',
       inputs: { position: 'H 0 0 0\nH 0 0 0.74', position_source: 'user', position_unit: 'angstrom', charge: 0, charge_source: 'user', spin: 1, spin_source: 'user' },
-      decision: { xc: 'PBE', source: 'user', rationale: 'Explicit user method' },
+      decision: { xc: 'PBE', basis: 'def2-TZVP', source: 'user', rationale: 'Explicit user method' },
     }],
   } }, execution)
   assert.equal(plan.ok, true, JSON.stringify(plan))
@@ -103,11 +103,11 @@ try {
   assert.equal(await (await fetch(advancedCard.download_url)).text(), advancedCard.content)
   const propertyCases = [
     { task_id: 'lda_frequency', job_type: 'energy',
-      decision: { xc: 'SVWN', source: 'user', rationale: 'Explicit user method' },
+      decision: { xc: 'SVWN', basis: 'def2-TZVP', source: 'user', rationale: 'Explicit user method' },
       rest_options: { hessian: { frequencies: true } }, marker: 'xc = "SVWN"' },
     { task_id: 'open_shell_frequency', job_type: 'energy',
       inputs: { ...plan.plan.tasks[0].inputs, charge: 1, spin: 2 },
-      decision: { xc: 'wB97X', source: 'user', rationale: 'Explicit user method' },
+      decision: { xc: 'wB97X', basis: 'def2-TZVP', source: 'user', rationale: 'Explicit user method' },
       rest_options: { ctrl: { analdrv_tasks: ['hessian'] }, thermo: { temperature: 298.15, pressure: 1.0 } },
       marker: 'analdrv_tasks = ["hessian"]' },
     { task_id: 'response', job_type: 'energy',
@@ -136,7 +136,7 @@ try {
   const blockedGradient = await ctx.tools.get('create_aifs_plan').execute({ plan: {
     question: 'Reject unsupported RSH excited gradient without replacing the method', goal: 'other',
     tasks: [{ ...plan.plan.tasks[0], task_id: 'blocked_gradient', job_type: 'force',
-      decision: { xc: 'wB97X', source: 'user', rationale: 'Explicit user method' },
+      decision: { xc: 'wB97X', basis: 'def2-TZVP', source: 'user', rationale: 'Explicit user method' },
       rest_options: { tddft: { tddft_grad_state: 1 } },
     }],
   } }, execution)
@@ -147,6 +147,11 @@ try {
   assert(skills.some(skill => skill.name === 'aifs-molecular-planning'))
   const skill = await ctx.skills.get('aifs-molecular-planning')
   assert(skill.content.includes('create_aifs_plan'))
+  assert.equal(skill.resourceBase.kind, 'directory')
+  for (const match of skill.content.matchAll(/\]\((references\/[^)]+)\)/g)) {
+    const reference = await readFile(join(skill.resourceBase.path, match[1]), 'utf8')
+    assert(reference.trim().length > 0, `Unreadable bundled Skill reference: ${match[1]}`)
+  }
   const example = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(skill.content)[1])
   const optimizedPlan = await ctx.tools.get('create_aifs_plan').execute({ plan: example }, execution)
   assert.equal(optimizedPlan.ok, true, JSON.stringify(optimizedPlan))

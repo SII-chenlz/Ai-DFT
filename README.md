@@ -1,8 +1,8 @@
 # AIFS
 
-AIFS 是 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 的分子计算助手插件。用户通过对话选择泛函与基组、拆分计算任务、保存计划，并获得经过校验的 [REST](https://gitee.com/restgroup/rest) `.in` 输入卡。
+AIFS 是面向 [REST](https://gitee.com/restgroup/rest) 的计算智能体，通过 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 插件交付。用户通过对话选择泛函与基组、拆分计算任务、保存计划，并获得经过校验的 REST `.in` 输入卡。
 
-仓库包含 TypeScript 插件、规划 Skill 和 Python 后端。支持逐任务设置方法，保留证据、计划版本及卡片记录；当前只准备输入，不运行计算。支持范围见 [REST 能力](packaging/rest-coverage.md)。
+仓库包含 TypeScript 插件、规划 Skill 和 Python 后端。目标是为 REST 支持的计算任务提供对应输入卡；支持逐任务设置方法，保留证据、计划版本及卡片记录。当前只准备输入，不运行计算；已接入范围与缺口见 [REST 能力](packaging/rest-coverage.md)。
 
 DSH 提供界面、模型配置、会话和工具调度；AIFS 提供专业流程及计划／输入卡服务。科学建议与最终回复由所选模型生成，Skill 指导模型，后端检查输入与依赖，不自动证明泛函最优或自由文本公式正确。
 
@@ -12,7 +12,7 @@ DSH 提供界面、模型配置、会话和工具调度；AIFS 提供专业流�
 2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
 3. 在 DSH「设置 → 模型」配置接口与 API Key，选择支持工具调用的模型。
 
-当前调试包：`dist/aifs-dsh-0.1.13-macos-arm64-local.tgz`、`dist/aifs-dsh-0.1.13-windows-x64-local.tgz`。Windows 后端已通过原生构建与持久化检查，Windows DSH 安装及真实对话待验收；Intel Mac 暂无安装包。
+当前调试包：`dist/aifs-dsh-0.1.14-macos-arm64-local.tgz`、`dist/aifs-dsh-0.1.14-windows-x64-local.tgz`。Windows 后端已通过原生构建与持久化检查，Windows DSH 安装及真实对话待验收；Intel Mac 暂无安装包。
 
 用户无需安装 Python 或 Node。升级时卸载旧插件、安装新版，完全退出并重开 DSH（Mac 用 `⌘Q`）。
 

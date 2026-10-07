@@ -73,7 +73,7 @@ python -m aifs.evidence_cli search \
 
 ## 关键行为
 
-- 自洽场方法（HF、LDA、BLYP、PBE、xPBE、XLYP、SCAN、M06-L、MN15-L、TPSS、B3LYP、X3LYP、PBE0、M05、M05-2X、M06、M06-2X、SCAN0、MN15）默认基组 `def2-TZVPP`；后自洽场方法（MP2、XYG3、XYGJOS、XYG7、xDH-PBE0、sBGE2、ZRPS、scsRPA、R-xDH7、RPA@PBE、RPA@B3LYP）默认基组 `def2-QZVPP`。
+- 单卡 `/v1/rest-inputs` 保留目录中的默认基组：自洽场方法默认 `def2-TZVPP`，后自洽场方法默认 `def2-QZVPP`。任务计划出卡必须有明确的 `decision.basis`；仅选泛函、基组为 null 时等待基组决策，不自动套用默认值。方法与解析路径以 `/v1/rest-capabilities` 为准，LDA 等家族名称不能替代具体方法名。
 - 经验色散仅允许 `d3`、`d3bj`、`d4`，通过独立的 `empirical_dispersion` 键输出；双杂化/RPA 类方法（XYG3、XYG7、XYGJOS、xDH-PBE0、sBGE2、ZRPS、scsRPA、R-xDH7、RPA@PBE、RPA@B3LYP）请求色散时返回结构化领域错误（code `empirical_dispersion_not_needed`），绝不静默删除。
 - `spin == 1` 自动推导 `spin_polarization=false`；`spin > 1` 自动推导 `true`；推导结果记录在 `defaults_applied`。
 - `num_threads` 缺省为 10；`basis_path` 由服务端配置 `AIFS_BASIS_SET_POOL` 与最终基组拼接，后端不硬编码本机路径。请求体没有 `basis_set_pool` 字段（传入即 422）；`basis` 只能是池根目录内的相对路径，绝对路径、盘符与 `.`/`..` 段被拒绝（422，code `basis_outside_pool`）。

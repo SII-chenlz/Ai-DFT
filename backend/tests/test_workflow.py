@@ -45,6 +45,7 @@ def _task(task_id: str, job_type: str, *, decision: bool = True) -> dict:
         },
         "decision": {
             "xc": "PBE",
+            "basis": "def2-TZVPP",
             "source": "user",
             "rationale": "The user selected PBE; no literature ranking is claimed.",
         }
@@ -87,6 +88,32 @@ def test_unintegrated_method_is_saved_without_claiming_rest_lacks_it(api: TestCl
     assert status["state"] == "unsupported"
     assert "AIFS REST card catalog" in status["blockers"][0]
     assert api.post(f"/v1/plans/{plan['plan_id']}/tasks/H2/cards").status_code == 422
+
+
+def test_functional_selection_waits_for_a_separate_basis_decision(api: TestClient) -> None:
+    task = _task("H2", "energy")
+    task["decision"]["basis"] = None
+    draft = {"question": "PBE selected, basis not yet chosen", "goal": "other", "tasks": [task]}
+    created = api.post("/v1/plans", json=draft).json()
+    plan_id = created["plan_id"]
+    assert created["statuses"][0]["state"] == "needs_decision"
+    assert "basis decision" in created["statuses"][0]["blockers"][0]
+    assert api.post(f"/v1/plans/{plan_id}/tasks/H2/cards").status_code == 422
+    assert api.get(f"/v1/plans/{plan_id}").json()["cards"] == []
+
+    task["decision"]["basis"] = "def2-TZVPP"
+    revised = api.put(
+        f"/v1/plans/{plan_id}",
+        json={"expected_version": 1, "change_reason": "User selected basis", "plan": draft},
+    ).json()
+    assert revised["statuses"][0]["state"] == "ready_for_card"
+    card = api.post(f"/v1/plans/{plan_id}/tasks/H2/cards").json()
+    assert card["validation"]["valid"]
+    assert card["request"]["xc"] == "PBE"
+    assert card["request"]["basis"] == "def2-TZVPP"
+    assert api.get(card["download_path"]).text == card["content"]
+    historic = api.get(f"/v1/plans/{plan_id}?version=1").json()
+    assert historic["plan"]["tasks"][0]["decision"]["basis"] is None
 
 
 def test_units_required_and_persist_across_revisions_and_downloads(api: TestClient) -> None:
@@ -576,6 +603,7 @@ def test_web_comparison_opposition_and_missing_evidence_decisions(api: TestClien
     task = body["tasks"][0]
     task["decision"] = {
         "xc": "PBE",
+        "basis": "def2-TZVP",
         "source": "provisional",
         "rationale": "No relevant source was found yet",
         "uncertainty": "Web search found no relevant comparison",
@@ -603,6 +631,7 @@ def test_web_comparison_opposition_and_missing_evidence_decisions(api: TestClien
     ]
     task["decision"] = {
         "xc": "PBE",
+        "basis": "def2-TZVP",
         "source": "evidence",
         "rationale": (
             "One comparison favors PBE for this test property; protocol transfer remains uncertain"
@@ -643,6 +672,7 @@ def test_web_comparison_opposition_and_missing_evidence_decisions(api: TestClien
 
     task["decision"] = {
         "xc": "PBE",
+        "basis": "def2-TZVP",
         "source": "user",
         "rationale": "User chose PBE for a controlled run, not a literature recommendation",
     }

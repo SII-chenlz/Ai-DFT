@@ -104,6 +104,7 @@ def main():
                 },
                 "decision": {
                     "xc": "PBE",
+                    "basis": "def2-TZVP",
                     "source": "user",
                     "rationale": "User selected PBE",
                 },
@@ -113,6 +114,21 @@ def main():
                 "goal": "other",
                 "tasks": [task],
             }
+            task["decision"]["basis"] = None
+            pending = request(address, "/v1/plans", plan)
+            assert pending["statuses"][0]["state"] == "needs_decision"
+            try:
+                request(
+                    address,
+                    f"/v1/plans/{pending['plan_id']}/tasks/h2/cards",
+                    method="POST",
+                )
+            except urllib.error.HTTPError as error:
+                assert error.code == 422
+                assert json.loads(error.read())["error"]["code"] == "task_not_ready"
+            else:
+                raise AssertionError("Unconfirmed basis produced a formal card")
+            task["decision"]["basis"] = "def2-TZVP"
             created = request(address, "/v1/plans", plan)
             plan_id = created["plan_id"]
             card = request(
@@ -169,6 +185,7 @@ def main():
                     "path-with-spaces",
                     "dynamic-loopback-port",
                     "health",
+                    "unconfirmed-basis-blocked",
                     "plan-and-card",
                     "independent-validation",
                     "download-body",

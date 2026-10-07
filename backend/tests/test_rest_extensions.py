@@ -43,6 +43,7 @@ def task(options=None, xc="PBE", parser="legacy", job="energy"):
         },
         "decision": {
             "xc": xc,
+            "basis": "def2-TZVPP",
             "xc_parser": parser,
             "source": "user",
             "rationale": "User confirmed method and required parameters",
