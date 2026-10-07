@@ -83,7 +83,21 @@ After external calculations, request all required energies/ZPE **with their unit
 
 AIFS currently saves tasks/formulas and prepares input cards; it does not run frequencies, parse results or evaluate free-text formulas. A detailed vibronic VDE/spectral comparison needs its own stated experimental convention and vibrational/Franck–Condon treatment; do not apply the equilibrium ADE correction to ordinary VDE automatically.
 
-Definition reference for molecular ADE: [neutral-minus-anion ZPE correction to the 0–0 transition](https://pubs.rsc.org/en/content/articlehtml/2020/cp/d0cp05204c). This defines an observable, not a functional recommendation for any particular system.
+The fixed-geometry VDE is not universally the maximum of a measured photoelectron band. The 0–0 ADE is the vibrational-ground-state threshold, not automatically the first visible onset: Franck–Condon intensities, hot bands, unresolved transitions and the experimental assignment matter. Describe the comparison conditionally; do not save a blanket peak/onset equality in task notes. See [a primary study demonstrating a band maximum different from VDE](https://iopenshell.usc.edu/pubs/abstracts/134/).
+
+Definition references for molecular ADE: [neutral-minus-anion ZPE correction to the 0–0 transition](https://pubs.rsc.org/en/content/articlehtml/2020/cp/d0cp05204c) and [electronic differences at each optimized geometry with ZPE corrections](https://pmc.ncbi.nlm.nih.gov/articles/PMC9862062/). These define observables, not functional recommendations for a particular system.
+
+## Check the final explanation against the saved plan
+
+Before replying, reconcile the latest saved plan and card results with the scientific explanation:
+
+- Use the current task decision, state, geometry source and `analysis_formula`. If the current record is not available, read it with `get_aifs_plan`. Do not re-derive a shorter formula while summarizing; keep species, geometry labels, coefficient signs and ZPE sources consistent. If a saved formula is scientifically wrong, explain and revise it rather than quoting it as authoritative. Input validation does not certify a free-text scientific formula.
+- For ADE, the neutral energy is evaluated at the neutral optimized geometry. For VDE, it is evaluated at the anion optimized geometry. Never write “ADE = the above formula + ZPE difference” after presenting VDE. State `ADE_0 = ADE_electronic + ZPE(neutral) - ZPE(anion)` explicitly when this definition matters.
+- Report prepared files, pending calculations and experimental conclusions separately. A generated/validated card is an input file, not a finished calculation or proof that the user's external run environment is ready. Do not describe awaiting-result tasks under a blanket “completed” heading.
+- Default to prepared `.in` attachments, a short scientific step table when useful, and one concrete next action. Omit internal IDs and version bookkeeping unless requested. Explain a literature gap in one sentence; a literature review is separate work when requested. Do not append a preview-or-wait choice for tasks already constrained to wait for optimized coordinates.
+- Use normal Markdown and descriptive file/source links. Show the exact card body when requested. Keep genuine unresolved scientific choices in the DSH question panel; do not manufacture an extra decision to end the reply.
+
+This is an output consistency check for every system and observable. It reduces summarization drift but does not guarantee that a model follows it; validate the actual conversation and tool records.
 
 Compare methods against the user's actual observable and molecular system. Do not default every request to PBE0, or infer accuracy from a method's age, popularity or rung. When a comparison matters, choose a few justified alternatives: a relevant conventional hybrid, a range-separated method (for example ωB97X, ωB97X-V or ωB97M-V when applicable), and a double-hybrid/post-SCF method such as XYG3/XYG7 only if the system and resource constraints fit. Explain inclusion/exclusion, basis and convergence considerations, and relevant opposing evidence. Retain favorable PBE0 evidence when it applies. Broad molecular benchmarks or averages over a cluster series do not determine the best method for a specific Al-cluster ADE/VDE.
 

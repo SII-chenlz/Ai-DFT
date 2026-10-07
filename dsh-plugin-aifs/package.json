@@ -1,6 +1,6 @@
 {
   "name": "@aifs/dsh-plugin-aifs",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "private": true,
   "type": "module",
   "description": "Cordis plugin exposing AIFS plans, evidence and REST input cards to DeepSeek Harness over HTTP.",
