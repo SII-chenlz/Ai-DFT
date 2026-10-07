@@ -8,6 +8,8 @@ DSH 提供界面、模型配置、会话和工具调度；AIFS 提供专业流�
 
 ## 安装
 
+安装包见 [GitHub Releases](https://github.com/SII-chenlz/Ai-DFT/releases)，选择与系统对应的 `.tgz`。
+
 1. 打开 DSH 桌面版，在「插件 → 添加插件」填写 `.tgz` 安装包的绝对路径，无需解压。
 2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
 3. 在 DSH「设置 → 模型」配置接口与 API Key，选择支持工具调用的模型。
