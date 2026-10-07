@@ -12,7 +12,7 @@ DSH 提供界面、模型配置、会话和工具调度；AIFS 提供专业流�
 2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
 3. 在 DSH「设置 → 模型」配置接口与 API Key，选择支持工具调用的模型。
 
-当前调试包：`dist/aifs-dsh-0.1.14-macos-arm64-local.tgz`、`dist/aifs-dsh-0.1.14-windows-x64-local.tgz`。Windows 后端已通过原生构建与持久化检查，Windows DSH 安装及真实对话待验收；Intel Mac 暂无安装包。
+当前调试包：`dist/aifs-dsh-0.1.15-macos-arm64-local.tgz`、`dist/aifs-dsh-0.1.15-windows-x64-local.tgz`。Windows 后端已通过原生构建与持久化检查，Windows DSH 安装及真实对话待验收；Intel Mac 暂无安装包。
 
 用户无需安装 Python 或 Node。升级时卸载旧插件、安装新版，完全退出并重开 DSH（Mac 用 `⌘Q`）。
 
@@ -28,4 +28,6 @@ DSH 提供界面、模型配置、会话和工具调度；AIFS 提供专业流�
 
 计划、证据与卡片保存在 `$DSH_HOME/aifs/`，默认 `~/.dsh/aifs/`。重开后可要求找回计划；实际运行 REST 时需使用计算环境中的基组路径。
 
-开发与打包见 [脚本文档](scripts/README.md)，数据迁移见 [安装说明](packaging/README.md)。
+产品现状、职责与开发入口见 [产品与开发指南](docs/产品与开发指南.md)。开发与打包见 [脚本文档](scripts/README.md)，数据迁移见 [安装说明](packaging/README.md)。
+
+许可证：[MIT](LICENSE)。

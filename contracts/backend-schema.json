@@ -1,0 +1,1634 @@
+{
+  "contract_version": 1,
+  "source_hashes": {
+    "backend/src/aifs/contracts.py": "4e86ccdea228c7b248adc8cc0f633e983da235a340efb3cafc77c03e16cd18f1",
+    "backend/src/aifs/models.py": "72a3b887d4ec0c8a06ec7a6394cc560b4801a7a2665345472881d5e92a34311a",
+    "backend/src/aifs/workflow_models.py": "58b407ec44d138dfa8851ae0b95e985d08e48540229afbb8f59fc224da77b2c1",
+    "backend/src/aifs/evidence_models.py": "11ed6ed3694597f30013dab83427acde5fef741653870f8a56b43754596cbff4",
+    "backend/src/aifs/rest/catalogs.py": "70b0d16c32b99b8bfd0e45b27e319cf25f86a5d843640684213b6ca2c04ffc0f"
+  },
+  "generated_ts_sha256": "819d228292974d3fbc3e878ab438775bcbe860bb4d590640e5bd3198699c086b",
+  "models": {
+    "PlanDraft": {
+      "$defs": {
+        "EvidenceRef": {
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "enum": [
+                "local",
+                "web"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "claim_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "method_used",
+                    "comparative_benchmark",
+                    "author_recommendation",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Claim Type"
+            },
+            "record_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Record Id"
+            },
+            "url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Url"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Title"
+            },
+            "note": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Note",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "note"
+          ],
+          "title": "EvidenceRef",
+          "type": "object"
+        },
+        "JsonValue": {},
+        "MethodCandidate": {
+          "additionalProperties": false,
+          "properties": {
+            "xc": {
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Xc",
+              "type": "string"
+            },
+            "basis": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Basis"
+            },
+            "rationale": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Rationale",
+              "type": "string"
+            },
+            "supporting": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Supporting",
+              "type": "array"
+            },
+            "opposing": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Opposing",
+              "type": "array"
+            }
+          },
+          "required": [
+            "xc",
+            "rationale"
+          ],
+          "title": "MethodCandidate",
+          "type": "object"
+        },
+        "MethodDecision": {
+          "additionalProperties": false,
+          "properties": {
+            "xc": {
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Xc",
+              "type": "string"
+            },
+            "xc_parser": {
+              "default": "legacy",
+              "enum": [
+                "legacy",
+                "parse_xc"
+              ],
+              "title": "Xc Parser",
+              "type": "string"
+            },
+            "basis": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Basis"
+            },
+            "empirical_dispersion": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "d3",
+                    "d3bj",
+                    "d4"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Empirical Dispersion"
+            },
+            "source": {
+              "enum": [
+                "user",
+                "evidence",
+                "provisional"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "rationale": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "title": "Rationale",
+              "type": "string"
+            },
+            "uncertainty": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Uncertainty"
+            },
+            "supporting": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Supporting",
+              "type": "array"
+            },
+            "opposing": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Opposing",
+              "type": "array"
+            }
+          },
+          "required": [
+            "xc",
+            "source",
+            "rationale"
+          ],
+          "title": "MethodDecision",
+          "type": "object"
+        },
+        "PlanTask": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+              "title": "Task Id",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Purpose",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "rest",
+                "analysis",
+                "unsupported"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "depends_on": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "system_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "System Name"
+            },
+            "job_type": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Type"
+            },
+            "rest_options": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              "title": "Rest Options",
+              "type": "object"
+            },
+            "analysis_formula": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Analysis Formula"
+            },
+            "inputs": {
+              "$ref": "#/$defs/TaskInputs"
+            },
+            "candidates": {
+              "items": {
+                "$ref": "#/$defs/MethodCandidate"
+              },
+              "title": "Candidates",
+              "type": "array"
+            },
+            "decision": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MethodDecision"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Notes"
+            }
+          },
+          "required": [
+            "task_id",
+            "title",
+            "purpose",
+            "kind"
+          ],
+          "title": "PlanTask",
+          "type": "object"
+        },
+        "TaskInputs": {
+          "additionalProperties": false,
+          "properties": {
+            "position": {
+              "anyOf": [
+                {
+                  "maxLength": 200000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position"
+            },
+            "position_unit": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "angstrom",
+                    "bohr"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position Unit"
+            },
+            "position_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external_optimized",
+                    "prior_result"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position Source"
+            },
+            "position_from_task": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position From Task"
+            },
+            "charge": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Charge"
+            },
+            "charge_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Charge Source"
+            },
+            "spin": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spin"
+            },
+            "spin_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spin Source"
+            }
+          },
+          "title": "TaskInputs",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "goal": {
+          "enum": [
+            "reaction_energy",
+            "binding_energy",
+            "optimization_single_point",
+            "force",
+            "dipole",
+            "other"
+          ],
+          "title": "Goal",
+          "type": "string"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/PlanTask"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Tasks",
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "question",
+        "goal",
+        "tasks"
+      ],
+      "title": "PlanDraft",
+      "type": "object"
+    },
+    "PlanRevisionRequest": {
+      "$defs": {
+        "EvidenceRef": {
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "enum": [
+                "local",
+                "web"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "claim_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "method_used",
+                    "comparative_benchmark",
+                    "author_recommendation",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Claim Type"
+            },
+            "record_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Record Id"
+            },
+            "url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Url"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Title"
+            },
+            "note": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Note",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "note"
+          ],
+          "title": "EvidenceRef",
+          "type": "object"
+        },
+        "JsonValue": {},
+        "MethodCandidate": {
+          "additionalProperties": false,
+          "properties": {
+            "xc": {
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Xc",
+              "type": "string"
+            },
+            "basis": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Basis"
+            },
+            "rationale": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Rationale",
+              "type": "string"
+            },
+            "supporting": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Supporting",
+              "type": "array"
+            },
+            "opposing": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Opposing",
+              "type": "array"
+            }
+          },
+          "required": [
+            "xc",
+            "rationale"
+          ],
+          "title": "MethodCandidate",
+          "type": "object"
+        },
+        "MethodDecision": {
+          "additionalProperties": false,
+          "properties": {
+            "xc": {
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Xc",
+              "type": "string"
+            },
+            "xc_parser": {
+              "default": "legacy",
+              "enum": [
+                "legacy",
+                "parse_xc"
+              ],
+              "title": "Xc Parser",
+              "type": "string"
+            },
+            "basis": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Basis"
+            },
+            "empirical_dispersion": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "d3",
+                    "d3bj",
+                    "d4"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Empirical Dispersion"
+            },
+            "source": {
+              "enum": [
+                "user",
+                "evidence",
+                "provisional"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "rationale": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "title": "Rationale",
+              "type": "string"
+            },
+            "uncertainty": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Uncertainty"
+            },
+            "supporting": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Supporting",
+              "type": "array"
+            },
+            "opposing": {
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Opposing",
+              "type": "array"
+            }
+          },
+          "required": [
+            "xc",
+            "source",
+            "rationale"
+          ],
+          "title": "MethodDecision",
+          "type": "object"
+        },
+        "PlanDraft": {
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "maxLength": 8000,
+              "minLength": 1,
+              "title": "Question",
+              "type": "string"
+            },
+            "goal": {
+              "enum": [
+                "reaction_energy",
+                "binding_energy",
+                "optimization_single_point",
+                "force",
+                "dipole",
+                "other"
+              ],
+              "title": "Goal",
+              "type": "string"
+            },
+            "tasks": {
+              "items": {
+                "$ref": "#/$defs/PlanTask"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Tasks",
+              "type": "array"
+            },
+            "assumptions": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Assumptions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "question",
+            "goal",
+            "tasks"
+          ],
+          "title": "PlanDraft",
+          "type": "object"
+        },
+        "PlanTask": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+              "title": "Task Id",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Purpose",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "rest",
+                "analysis",
+                "unsupported"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "depends_on": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "system_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "System Name"
+            },
+            "job_type": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Type"
+            },
+            "rest_options": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              "title": "Rest Options",
+              "type": "object"
+            },
+            "analysis_formula": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Analysis Formula"
+            },
+            "inputs": {
+              "$ref": "#/$defs/TaskInputs"
+            },
+            "candidates": {
+              "items": {
+                "$ref": "#/$defs/MethodCandidate"
+              },
+              "title": "Candidates",
+              "type": "array"
+            },
+            "decision": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MethodDecision"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Notes"
+            }
+          },
+          "required": [
+            "task_id",
+            "title",
+            "purpose",
+            "kind"
+          ],
+          "title": "PlanTask",
+          "type": "object"
+        },
+        "TaskInputs": {
+          "additionalProperties": false,
+          "properties": {
+            "position": {
+              "anyOf": [
+                {
+                  "maxLength": 200000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position"
+            },
+            "position_unit": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "angstrom",
+                    "bohr"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position Unit"
+            },
+            "position_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external_optimized",
+                    "prior_result"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position Source"
+            },
+            "position_from_task": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position From Task"
+            },
+            "charge": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Charge"
+            },
+            "charge_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Charge Source"
+            },
+            "spin": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spin"
+            },
+            "spin_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spin Source"
+            }
+          },
+          "title": "TaskInputs",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": {
+          "minimum": 1,
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "change_reason": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Change Reason",
+          "type": "string"
+        },
+        "plan": {
+          "$ref": "#/$defs/PlanDraft"
+        }
+      },
+      "required": [
+        "expected_version",
+        "change_reason",
+        "plan"
+      ],
+      "title": "PlanRevisionRequest",
+      "type": "object"
+    },
+    "RestInputRequest": {
+      "$defs": {
+        "JsonValue": {}
+      },
+      "additionalProperties": false,
+      "description": "Structured request for rendering a REST TOML input card.\n\nExtra fields are rejected. ``xc`` is normalized to its canonical casing\nand checked against the REST method catalog during validation. The basis\npool root is deployment configuration (``AIFS_BASIS_SET_POOL``), not a\nrequest field: ``basis`` is only the name inside that pool.",
+      "properties": {
+        "system_name": {
+          "title": "System Name",
+          "type": "string"
+        },
+        "position": {
+          "title": "Position",
+          "type": "string"
+        },
+        "position_unit": {
+          "default": "angstrom",
+          "enum": [
+            "angstrom",
+            "bohr"
+          ],
+          "title": "Position Unit",
+          "type": "string"
+        },
+        "job_type": {
+          "enum": [
+            "energy",
+            "opt",
+            "force",
+            "numerical dipole"
+          ],
+          "title": "Job Type",
+          "type": "string"
+        },
+        "xc": {
+          "title": "Xc",
+          "type": "string"
+        },
+        "xc_parser": {
+          "default": "legacy",
+          "enum": [
+            "legacy",
+            "parse_xc"
+          ],
+          "title": "Xc Parser",
+          "type": "string"
+        },
+        "rest_options": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "title": "Rest Options",
+          "type": "object"
+        },
+        "basis": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Basis"
+        },
+        "charge": {
+          "default": 0.0,
+          "title": "Charge",
+          "type": "number"
+        },
+        "spin": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Spin",
+          "type": "integer"
+        },
+        "spin_polarization": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spin Polarization"
+        },
+        "empirical_dispersion": {
+          "anyOf": [
+            {
+              "enum": [
+                "d3",
+                "d3bj",
+                "d4"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Empirical Dispersion"
+        },
+        "print_level": {
+          "default": 1,
+          "minimum": 0,
+          "title": "Print Level",
+          "type": "integer"
+        },
+        "num_threads": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Num Threads",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "cube_orb",
+              "dipole",
+              "fchk",
+              "force",
+              "force_for_ghost_point_charges",
+              "geometry",
+              "molden"
+            ]
+          },
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "system_name",
+        "position",
+        "job_type",
+        "xc"
+      ],
+      "title": "RestInputRequest",
+      "type": "object"
+    },
+    "ValidateInputRequest": {
+      "additionalProperties": false,
+      "description": "Request to independently validate a complete REST TOML input card.",
+      "properties": {
+        "rest_input": {
+          "title": "Rest Input",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rest_input"
+      ],
+      "title": "ValidateInputRequest",
+      "type": "object"
+    },
+    "RestInputResponse": {
+      "description": "Result of rendering a structured request into a REST TOML input card.",
+      "properties": {
+        "rest_input": {
+          "title": "Rest Input",
+          "type": "string"
+        },
+        "effective_settings": {
+          "additionalProperties": true,
+          "title": "Effective Settings",
+          "type": "object"
+        },
+        "defaults_applied": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Defaults Applied",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rest_input",
+        "effective_settings",
+        "defaults_applied",
+        "warnings"
+      ],
+      "title": "RestInputResponse",
+      "type": "object"
+    },
+    "ValidateInputResponse": {
+      "$defs": {
+        "ValidationIssue": {
+          "description": "A single validator finding on a REST input card.",
+          "properties": {
+            "code": {
+              "title": "Code",
+              "type": "string"
+            },
+            "message": {
+              "title": "Message",
+              "type": "string"
+            },
+            "section": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Section"
+            },
+            "field": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Field"
+            },
+            "line": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Line"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ValidationIssue",
+          "type": "object"
+        }
+      },
+      "description": "Result of independently validating a REST TOML input card.\n\n``valid = false`` is a successful domain result, not an infrastructure\nfailure.",
+      "properties": {
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ValidationIssue"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "$ref": "#/$defs/ValidationIssue"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "parsed_sections": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Parsed Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "valid",
+        "errors",
+        "warnings",
+        "parsed_sections"
+      ],
+      "title": "ValidateInputResponse",
+      "type": "object"
+    },
+    "EvidenceSearchRequest": {
+      "additionalProperties": false,
+      "description": "Natural-language retrieval query passed from the Harness tool.",
+      "properties": {
+        "system_description": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "System Description",
+          "type": "string"
+        },
+        "calculation_goal": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calculation Goal"
+        },
+        "candidate_functionals": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Candidate Functionals",
+          "type": "array"
+        },
+        "limit": {
+          "default": 8,
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "system_description"
+      ],
+      "title": "EvidenceSearchRequest",
+      "type": "object"
+    },
+    "EvidenceSearchResponse": {
+      "$defs": {
+        "EvidenceHit": {
+          "properties": {
+            "record_id": {
+              "title": "Record Id",
+              "type": "string"
+            },
+            "doi": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Doi"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Title"
+            },
+            "system": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "System"
+            },
+            "calculation": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calculation"
+            },
+            "benchmark": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Benchmark"
+            },
+            "functional": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Functional"
+            },
+            "protocol": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Protocol"
+            },
+            "experience_type": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Experience Type"
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Summary"
+            },
+            "score": {
+              "title": "Score",
+              "type": "number"
+            },
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/EvidenceQuote"
+              },
+              "title": "Evidence",
+              "type": "array"
+            }
+          },
+          "required": [
+            "record_id",
+            "score",
+            "evidence"
+          ],
+          "title": "EvidenceHit",
+          "type": "object"
+        },
+        "EvidenceQuote": {
+          "properties": {
+            "quote": {
+              "title": "Quote",
+              "type": "string"
+            },
+            "page": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Page"
+            },
+            "section": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Section"
+            },
+            "evidence_type": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Evidence Type"
+            }
+          },
+          "required": [
+            "quote"
+          ],
+          "title": "EvidenceQuote",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "retrieval_mode": {
+          "title": "Retrieval Mode",
+          "type": "string"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        },
+        "hits": {
+          "items": {
+            "$ref": "#/$defs/EvidenceHit"
+          },
+          "title": "Hits",
+          "type": "array"
+        }
+      },
+      "required": [
+        "retrieval_mode",
+        "query",
+        "hits"
+      ],
+      "title": "EvidenceSearchResponse",
+      "type": "object"
+    }
+  }
+}

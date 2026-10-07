@@ -13,22 +13,16 @@ import type { AifsBackendClient, GenerateRestInputArgs, JsonValue } from './clie
 import { GENERATE_OUTPUT_SCHEMA, VALIDATE_OUTPUT_SCHEMA } from './schemas.ts'
 import { EVIDENCE_SEARCH_OUTPUT_SCHEMA } from './schemas.ts'
 import { PLAN_DRAFT_SCHEMA } from './plan-schema.ts'
+import { REST_INPUT_SCHEMA, VALIDATE_INPUT_SCHEMA, EVIDENCE_REQUEST_SCHEMA, PLAN_REVISION_SCHEMA } from './generated/backend.ts'
+import { withDescriptions, REST_DESCRIPTIONS } from './schema-descriptions.ts'
 
-/**
- * Versioned mirror of `aifs.rest.catalogs` (backend README read 2026-08-23).
- * Kept in sync manually until OpenAPI-generated types replace it.
- */
-const JOB_TYPES = ['energy', 'opt', 'force', 'numerical dipole'] as const
-const DISPERSION_VALUES = ['d3', 'd3bj', 'd4'] as const
-const ALLOWED_OUTPUTS = [
-  'dipole',
-  'fchk',
-  'cube_orb',
-  'molden',
-  'geometry',
-  'force',
-  'force_for_ghost_point_charges',
-] as const
+const REST_PARAMETERS = withDescriptions(REST_INPUT_SCHEMA, REST_DESCRIPTIONS).properties
+const EVIDENCE_PARAMETERS = withDescriptions(EVIDENCE_REQUEST_SCHEMA, {
+  system_description: 'Description of the target system.',
+  calculation_goal: 'Requested calculation or property.',
+  candidate_functionals: 'Optional functional names to compare.',
+  limit: 'Maximum evidence records; backend range 1–50, default 8.',
+}).properties
 
 function renderJson(_args: unknown, value: unknown): Array<{ type: 'text'; text: string }> {
   return [{ type: 'text', text: JSON.stringify(value) }]
@@ -49,62 +43,7 @@ export function defineGenerateRestInputTool(client: AifsBackendClient): ToolDefi
       'come back as an ok=false structured result; only backend or network failures raise ' +
       'tool errors. The basis is a name inside the server-configured pool — never an ' +
       'absolute path.',
-    parameters: {
-      system_name: {
-        type: 'string',
-        required: true,
-        description: 'Short name of the molecular system, e.g. "water".',
-      },
-      position: {
-        type: 'string',
-        required: true,
-        description: 'Multi-line geometry, one "Element x y z" line per atom.',
-      },
-      position_unit: {
-        type: 'string', enum: ['angstrom', 'bohr'],
-        description: 'Confirmed coordinate unit, written explicitly to [geom] unit. Legacy omission uses AIFS angstrom default with a warning; confirm the unit before use.',
-      },
-      job_type: {
-        type: 'string',
-        required: true,
-        enum: [...JOB_TYPES],
-        description: 'REST job type.',
-      },
-      xc: {
-        type: 'string',
-        required: true,
-        description: 'Exchange-correlation method name (case-insensitive), e.g. "B3LYP".',
-      },
-      xc_parser: { type: 'string', enum: ['legacy', 'parse_xc'], description: 'Method parser; use get_rest_capabilities to check the exact supported name. Default legacy.' },
-      rest_options: { type: 'object', additionalProperties: true, description: 'Reviewed extra REST sections/keywords. Query get_rest_capabilities(section) first. No raw TOML; options cannot override core fields. Native thermo pressure atm; geometric thermo pressure bar.' },
-      basis: {
-        type: 'string',
-        description:
-          'Basis set name inside the server-configured pool, e.g. "def2-SVP". ' +
-          'Relative only; absolute paths and ".." segments are rejected by the backend.',
-      },
-      charge: { type: 'number', description: 'Net molecular charge. Default 0.' },
-      spin: {
-        type: 'integer',
-        description: 'Electron spin multiplicity (2S+1), at least 1. Default 1.',
-      },
-      spin_polarization: {
-        type: 'boolean',
-        description: 'Explicit spin polarization; derived from spin when omitted.',
-      },
-      empirical_dispersion: {
-        type: 'string',
-        enum: [...DISPERSION_VALUES],
-        description: 'Empirical dispersion correction, if the method needs one.',
-      },
-      print_level: { type: 'integer', description: 'REST print verbosity, >= 0. Default 1.' },
-      num_threads: { type: 'integer', description: 'Thread count, >= 1. Default 10.' },
-      outputs: {
-        type: 'array',
-        items: { type: 'string', enum: [...ALLOWED_OUTPUTS] },
-        description: 'Extra output items to request from REST.',
-      },
-    },
+    parameters: REST_PARAMETERS,
     output: {
       schema: GENERATE_OUTPUT_SCHEMA,
       render: renderJson,
@@ -142,13 +81,7 @@ export function defineValidateRestInputTool(client: AifsBackendClient): ToolDefi
       'Independently validate a complete REST TOML input card against the REST keyword ' +
       'catalogs via the AIFS backend. Returns valid plus structured errors and warnings; ' +
       'valid=false is a normal domain result, not a tool error.',
-    parameters: {
-      rest_input: {
-        type: 'string',
-        required: true,
-        description: 'Complete REST TOML input card as a string.',
-      },
-    },
+    parameters: VALIDATE_INPUT_SCHEMA.properties,
     output: {
       schema: VALIDATE_OUTPUT_SCHEMA,
       render: renderJson,
@@ -167,23 +100,7 @@ export function defineRetrieveFunctionalEvidenceTool(client: AifsBackendClient):
       'Search imported DFT literature records and return source-linked evidence for reasoning. ' +
       'This tool does not recommend a functional and does not replace scientific judgment. ' +
       'Compare returned systems, tasks, protocols and conflicting evidence before making a suggestion.',
-    parameters: {
-      system_description: {
-        type: 'string',
-        required: true,
-        description: 'Natural-language description of the target molecular or material system.',
-      },
-      calculation_goal: {
-        type: 'string',
-        description: 'Target task such as geometry optimization, energy, barrier, or frequency.',
-      },
-      candidate_functionals: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Optional functional names to compare explicitly.',
-      },
-      limit: { type: 'integer', description: 'Maximum evidence records to return, 1-20; default 8.' },
-    },
+    parameters: EVIDENCE_PARAMETERS,
     output: {
       schema: EVIDENCE_SEARCH_OUTPUT_SCHEMA,
       render: renderJson,
@@ -214,18 +131,14 @@ export function defineReviseAifsPlanTool(client: AifsBackendClient): ToolDefinit
     name: 'revise_aifs_plan',
     description: 'Revise a saved AIFS plan after the user supplies missing information or a method decision. Read its latest version first; old cards remain tied to their historical version.',
     parameters: {
+      ...PLAN_REVISION_SCHEMA.properties,
       plan_id: { type: 'string', required: true },
-      expected_version: { type: 'integer', required: true },
-      change_reason: { type: 'string', required: true },
       plan: { ...PLAN_DRAFT_SCHEMA, required: true, description: 'Complete revised PlanDraft, including every retained task. Preserve IDs; copy only the plan draft from get_aifs_plan, not its status/card metadata.' },
     },
     output: { schema: { type: 'json' }, render: renderJson },
     async execute(args, exec) {
-      return client.workflow('PUT', `/v1/plans/${encodeURIComponent(args.plan_id)}`, {
-        expected_version: args.expected_version,
-        change_reason: args.change_reason,
-        plan: args.plan as JsonValue,
-      }, exec.signal)
+      const { plan_id, ...revision } = args
+      return client.workflow('PUT', `/v1/plans/${encodeURIComponent(plan_id)}`, revision as JsonValue, exec.signal)
     },
   })
 }

@@ -32,6 +32,11 @@ def configure_data(data_dir: Path) -> None:
 
 class DesktopServer(uvicorn.Server):
     async def startup(self, sockets: list[socket.socket] | None = None) -> None:
+        from aifs.config import get_settings
+        from aifs.workflow_store import WorkflowStore
+
+        store = WorkflowStore(Path(get_settings().workflow_db))
+        store.close()
         await super().startup(sockets)
         if self.started and sockets:
             from aifs.api import SERVICE_VERSION

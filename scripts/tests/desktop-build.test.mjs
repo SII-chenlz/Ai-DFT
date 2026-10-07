@@ -18,10 +18,10 @@ async function fixture(run) {
       await mkdir(join(root, directory), { recursive: true })
     }
     const paths = [
-      'backend/src/aifs/__init__.py', 'dsh-plugin-aifs/package.json',
+      'backend/src/aifs', 'contracts', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'dsh-plugin-aifs/package.json',
       'dsh-plugin-aifs/package-lock.json', 'dsh-plugin-aifs/cordis.patch.yml',
       'dsh-plugin-aifs/src', 'skills', 'scripts/build-desktop-plugin.mjs',
-      'scripts/release.mjs', 'scripts/verify-desktop-import.mjs',
+      'scripts/release.mjs', 'scripts/check-contracts.mjs', 'scripts/verify-desktop-import.mjs',
       'packaging/requirements-desktop.lock', 'packaging/README.md',
       'packaging/local-acceptance.md', 'packaging/rest-coverage.md',
     ]
@@ -65,6 +65,9 @@ test('Windows packaging uses .exe and preserves other-platform archives', () => 
   assert(listing.includes('package/runtimes/win32-x64/aifs-backend/aifs-backend.exe'))
   assert(!listing.includes('runtimes/darwin-arm64'))
   assert(listing.includes('package/assets/skills/aifs-molecular-planning/SKILL.md'))
+  assert(listing.includes('package/LICENSE'))
+  assert(listing.includes('package/THIRD_PARTY_NOTICES.md'))
+  assert(listing.includes('package/licenses/dsh-tools.txt'))
   const digest = createHash('sha256').update(await readFile(archive)).digest('hex')
   assert.equal(await readFile(`${archive}.sha256`, 'utf8'), `${digest}  ${name}\n`)
 }))

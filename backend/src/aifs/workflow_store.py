@@ -6,6 +6,8 @@ import hashlib
 import json
 import sqlite3
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -18,14 +20,13 @@ from aifs.rest.catalogs import GEOMETRY_SOURCE_READ_DATE, SOURCE_READ_DATE, SOUR
 from aifs.rest.renderer import render_rest_input
 from aifs.rest.validator import validate_rest_input
 from aifs.workflow_models import EvidenceRef, PlanDraft, PlanTask, require_card_ready, task_status
-
-
-class WorkflowError(Exception):
-    def __init__(self, code: str, message: str, status: int = 404) -> None:
-        super().__init__(message)
-        self.code = code
-        self.message = message
-        self.status = status
+from aifs.workflow_schema import (
+    PLAN_SCHEMA_VERSION,
+    WorkflowError,
+    initialize_database,
+    load_snapshot,
+    require_writable,
+)
 
 
 def _now() -> str:
@@ -38,41 +39,26 @@ class WorkflowStore:
         self.connection = sqlite3.connect(str(path), timeout=10, check_same_thread=False)
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
-        self.connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS plans (
-              plan_id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS plan_versions (
-              plan_id TEXT NOT NULL REFERENCES plans(plan_id),
-              version INTEGER NOT NULL,
-              snapshot_json TEXT NOT NULL,
-              change_reason TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              PRIMARY KEY (plan_id, version)
-            );
-            CREATE TABLE IF NOT EXISTS cards (
-              card_id TEXT PRIMARY KEY,
-              plan_id TEXT NOT NULL,
-              version INTEGER NOT NULL,
-              task_id TEXT NOT NULL,
-              filename TEXT NOT NULL,
-              content TEXT NOT NULL,
-              sha256 TEXT NOT NULL,
-              request_json TEXT NOT NULL,
-              render_json TEXT NOT NULL,
-              validation_json TEXT NOT NULL,
-              catalog_source_date TEXT NOT NULL,
-              catalog_source_url TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY (plan_id, version) REFERENCES plan_versions(plan_id, version),
-              UNIQUE (plan_id, version, task_id)
-            );
-            """
-        )
+        try:
+            initialize_database(self.connection, path)
+        except Exception:
+            self.connection.close()
+            raise
 
     def close(self) -> None:
         self.connection.close()
+
+    @contextmanager
+    def _write_transaction(self) -> Iterator[sqlite3.Connection]:
+        conn = self.connection
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            require_writable(conn)
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     def _check_evidence(self, plan: PlanDraft) -> None:
         ids: set[str] = set()
@@ -98,24 +84,26 @@ class WorkflowStore:
             )
 
     def create(self, plan: PlanDraft) -> dict[str, Any]:
+        require_writable(self.connection)
         self._check_evidence(plan)
         plan_id = str(uuid.uuid4())
         now = _now()
-        with self.connection:
+        with self._write_transaction():
             self.connection.execute("INSERT INTO plans VALUES (?, ?, ?)", (plan_id, now, now))
             self.connection.execute(
-                "INSERT INTO plan_versions VALUES (?, 1, ?, ?, ?)",
-                (plan_id, plan.model_dump_json(), "initial plan", now),
+                "INSERT INTO plan_versions "
+                "(plan_id,version,snapshot_json,change_reason,created_at,schema_version) "
+                "VALUES (?, 1, ?, ?, ?, ?)",
+                (plan_id, plan.model_dump_json(), "initial plan", now, PLAN_SCHEMA_VERSION),
             )
         return self.get(plan_id)
 
     def revise(
         self, plan_id: str, expected_version: int, reason: str, plan: PlanDraft
     ) -> dict[str, Any]:
+        require_writable(self.connection)
         self._check_evidence(plan)
-        conn = self.connection
-        conn.execute("BEGIN IMMEDIATE")
-        try:
+        with self._write_transaction() as conn:
             row = conn.execute(
                 "SELECT MAX(version) AS version FROM plan_versions WHERE plan_id = ?", (plan_id,)
             ).fetchone()
@@ -128,20 +116,19 @@ class WorkflowStore:
             version = expected_version + 1
             now = _now()
             conn.execute(
-                "INSERT INTO plan_versions VALUES (?, ?, ?, ?, ?)",
-                (plan_id, version, plan.model_dump_json(), reason, now),
+                "INSERT INTO plan_versions "
+                "(plan_id,version,snapshot_json,change_reason,created_at,schema_version) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (plan_id, version, plan.model_dump_json(), reason, now, PLAN_SCHEMA_VERSION),
             )
             conn.execute("UPDATE plans SET updated_at = ? WHERE plan_id = ?", (now, plan_id))
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
         return self.get(plan_id)
 
     def list(self) -> list[dict[str, Any]]:
         rows = self.connection.execute(
             """
-            SELECT p.plan_id, p.created_at, p.updated_at, v.version, v.snapshot_json
+            SELECT p.plan_id, p.created_at, p.updated_at, v.version,
+                   v.snapshot_json, v.schema_version
             FROM plans p JOIN plan_versions v ON v.plan_id = p.plan_id
             WHERE v.version = (SELECT MAX(version) FROM plan_versions WHERE plan_id = p.plan_id)
             ORDER BY p.updated_at DESC
@@ -149,7 +136,7 @@ class WorkflowStore:
         ).fetchall()
         summaries = []
         for row in rows:
-            draft = PlanDraft.model_validate_json(row["snapshot_json"])
+            draft = load_snapshot(row["snapshot_json"], row["schema_version"])
             summaries.append(
                 {
                     "plan_id": row["plan_id"],
@@ -174,7 +161,7 @@ class WorkflowStore:
             ).fetchone()
         if row is None:
             raise WorkflowError("plan_not_found", "plan or version not found")
-        draft = PlanDraft.model_validate_json(row["snapshot_json"])
+        draft = load_snapshot(row["snapshot_json"], row["schema_version"])
         by_id = {task.task_id: task for task in draft.tasks}
         card_rows = self.connection.execute(
             "SELECT card_id, task_id, filename, sha256, created_at FROM cards "
@@ -197,6 +184,7 @@ class WorkflowStore:
         }
 
     def generate_card(self, plan_id: str, task_id: str) -> dict[str, Any]:
+        require_writable(self.connection)
         view = self.get(plan_id)
         version = view["version"]
         draft = PlanDraft.model_validate(view["plan"])
@@ -245,7 +233,7 @@ class WorkflowStore:
             "defaults_applied": rendered.defaults_applied,
             "warnings": rendered.warnings,
         }
-        with self.connection:
+        with self._write_transaction():
             self.connection.execute(
                 "INSERT OR IGNORE INTO cards VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (

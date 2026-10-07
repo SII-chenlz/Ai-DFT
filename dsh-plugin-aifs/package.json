@@ -1,6 +1,6 @@
 {
   "name": "@aifs/dsh-plugin-aifs",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "private": true,
   "type": "module",
   "description": "Cordis plugin exposing AIFS plans, evidence and REST input cards to DeepSeek Harness over HTTP.",
@@ -21,7 +21,7 @@
     }
   },
   "scripts": {
-    "test": "node ../scripts/release.mjs && node --test ../scripts/tests/*.test.mjs && vitest run",
+    "test": "node ../scripts/release.mjs && node ../scripts/check-contracts.mjs && node --test ../scripts/tests/*.test.mjs && vitest run",
     "typecheck": "tsc --noEmit",
     "build:desktop": "node ../scripts/build-desktop-plugin.mjs"
   },
@@ -46,5 +46,6 @@
     "typescript": "5.9.3",
     "vitest": "3.2.7",
     "esbuild": "0.28.2"
-  }
+  },
+  "license": "MIT"
 }

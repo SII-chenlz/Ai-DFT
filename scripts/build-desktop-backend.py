@@ -4,24 +4,32 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
 import platform
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend" / "src"))
 from aifs import __version__ as VERSION  # noqa: E402
+from aifs.contracts import synchronize  # noqa: E402
 
 
 def main():
+    synchronize(ROOT, check=True)
     machine = platform.machine().lower()
     if sys.platform == "darwin" and machine == "arm64":
         target = "darwin-arm64"
         executable = "aifs-backend/aifs-backend"
-    elif sys.platform == "win32" and machine in {"amd64", "x86_64"} and sys.maxsize > 2**32:
+    elif (
+        sys.platform == "win32"
+        and machine in {"amd64", "x86_64"}
+        and sys.maxsize > 2**32
+    ):
         target = "win32-x64"
         executable = "aifs-backend/aifs-backend.exe"
     else:
@@ -75,9 +83,52 @@ def main():
             "PYINSTALLER_CONFIG_DIR": str(ROOT / ".local" / "pyinstaller-cache"),
         },
     )
+    notices = destination / "licenses"
+    notices.mkdir(exist_ok=True)
+    versions = {}
+    for distribution in importlib.metadata.distributions():
+        name = distribution.metadata["Name"]
+        versions[name] = distribution.version
+        for entry in distribution.files or []:
+            path = Path(str(entry))
+            if ".." in path.parts:
+                continue
+            if not any(
+                part.lower().startswith(("license", "copying", "copyright", "notice"))
+                for part in path.parts
+            ):
+                continue
+            original = distribution.locate_file(entry)
+            if original.is_file():
+                target_path = notices / name / path
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_bytes(original.read_bytes())
+    python_license = next(
+        (
+            path
+            for path in (
+                Path(sysconfig.get_path("stdlib")) / "LICENSE.txt",
+                Path(sys.base_prefix) / "LICENSE.txt",
+            )
+            if path.is_file()
+        ),
+        None,
+    )
+    if python_license is None:
+        raise SystemExit(
+            "Python runtime license not found; preserve distribution notices before packaging"
+        )
+    (notices / "Python.txt").write_bytes(python_license.read_bytes())
+    for original in (ROOT / "packaging" / "licenses").glob("*.txt"):
+        (notices / original.name).write_bytes(original.read_bytes())
+    (notices / "packages.json").write_text(
+        json.dumps(versions, indent=2) + "\n", encoding="utf-8"
+    )
     files = []
-    for path in sorted((destination / "aifs-backend").rglob("*")):
+    for path in sorted(destination.rglob("*")):
         if path.is_file():
+            if path == destination / "runtime.json":
+                continue
             files.append(
                 {
                     "path": path.relative_to(destination).as_posix(),

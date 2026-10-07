@@ -1,3 +1,6 @@
+import type { InferValue } from '@deepseek-ai/dsh-tools'
+import type { REST_INPUT_SCHEMA, REST_RESPONSE_SCHEMA, VALIDATE_RESPONSE_SCHEMA, EVIDENCE_REQUEST_SCHEMA, EVIDENCE_RESPONSE_SCHEMA } from './generated/backend.ts'
+
 /**
  * HTTP client for the AIFS FastAPI backend.
  *
@@ -59,23 +62,8 @@ export class AifsBackendResponseTooLargeError extends AifsBackendError {
   }
 }
 
-/** Structured request to POST /v1/rest-inputs (mirrors the backend model). */
-export interface GenerateRestInputArgs {
-  system_name: string
-  position: string
-  job_type: 'energy' | 'opt' | 'force' | 'numerical dipole'
-  xc: string
-  xc_parser?: 'legacy' | 'parse_xc'
-  rest_options?: Record<string, Record<string, JsonValue>>
-  basis?: string
-  charge?: number
-  spin?: number
-  spin_polarization?: boolean
-  empirical_dispersion?: 'd3' | 'd3bj' | 'd4'
-  print_level?: number
-  num_threads?: number
-  outputs?: string[]
-}
+/** Request type inferred from the Python-generated contract. */
+export type GenerateRestInputArgs = InferValue<typeof REST_INPUT_SCHEMA>
 
 /** Backend domain error envelope (`{"error": {"code", "message"}}`). */
 export interface AifsDomainError {
@@ -83,66 +71,16 @@ export interface AifsDomainError {
   message: string
 }
 
-export interface GenerateRestInputSuccess {
-  ok: true
-  rest_input: string
-  effective_settings: Record<string, JsonValue>
-  defaults_applied: string[]
-  warnings: string[]
-}
+export type GenerateRestInputSuccess = InferValue<typeof REST_RESPONSE_SCHEMA> & { ok: true }
 
 export type GenerateOutcome = GenerateRestInputSuccess | { ok: false; error: AifsDomainError }
 
-export interface ValidationIssue {
-  code: string
-  message: string
-  /** The backend serializes its optional fields as JSON `null`. */
-  section?: string | null
-  field?: string | null
-  line?: number | null
-}
-
-export interface ValidateRestInputResult {
-  valid: boolean
-  errors: ValidationIssue[]
-  warnings: ValidationIssue[]
-  parsed_sections: string[]
-}
-
-export interface EvidenceSearchArgs {
-  system_description: string
-  calculation_goal?: string
-  candidate_functionals?: string[]
-  limit?: number
-}
-
-export interface EvidenceQuote {
-  quote: string
-  page: number | null
-  section: string | null
-  evidence_type: string | null
-}
-
-export interface EvidenceHit {
-  record_id: string
-  doi: string | null
-  title: string | null
-  system: string | null
-  calculation: string | null
-  benchmark: string | null
-  functional: string | null
-  protocol: string | null
-  experience_type: string | null
-  summary: string | null
-  score: number
-  evidence: EvidenceQuote[]
-}
-
-export interface EvidenceSearchResult {
-  retrieval_mode: string
-  query: string
-  hits: EvidenceHit[]
-}
+export type ValidateRestInputResult = InferValue<typeof VALIDATE_RESPONSE_SCHEMA>
+export type ValidationIssue = ValidateRestInputResult['errors'][number]
+export type EvidenceSearchArgs = InferValue<typeof EVIDENCE_REQUEST_SCHEMA>
+export type EvidenceSearchResult = InferValue<typeof EVIDENCE_RESPONSE_SCHEMA>
+export type EvidenceHit = EvidenceSearchResult['hits'][number]
+export type EvidenceQuote = EvidenceHit['evidence'][number]
 
 /** A settled POST: either a 2xx body or a 422 domain error envelope. */
 type PostResult =

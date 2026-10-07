@@ -14,4 +14,7 @@ fi
 "$VENV_DIR/bin/python" -c 'import sys, platform; assert sys.version_info[:2] == (3, 11) and platform.machine() == "arm64", "Build requires native arm64 Python 3.11"'
 "$VENV_DIR/bin/python" -m pip install -r "$ROOT_DIR/packaging/requirements-desktop.lock"
 "$VENV_DIR/bin/python" "$ROOT_DIR/scripts/build-desktop-backend.py"
+"$VENV_DIR/bin/python" "$ROOT_DIR/scripts/verify-desktop-backend.py" \
+  "$ROOT_DIR/build/desktop-runtimes/darwin-arm64/aifs-backend/aifs-backend" \
+  --report "$ROOT_DIR/.local/macos-backend-verification.json"
 node "$ROOT_DIR/scripts/build-desktop-plugin.mjs"

@@ -12,7 +12,7 @@ Cordis 函数插件，向 `ctx.tools` 注册工具，通过 HTTP 调用 `../back
 | `list_aifs_plans` / `get_aifs_plan` | `GET /v1/plans` / `GET /v1/plans/{id}` | 未找到计划返回结构化错误 | 抛出工具错误 |
 | `generate_aifs_task_card` / `get_aifs_card` | 任务出卡 / 已存卡读取 | 缺输入或不支持时返回阻碍原因 | 抛出工具错误 |
 
-插件不实现硬规则泛函推荐或 REST 计算执行。对每项计算任务的方法决策，AIFS 提示词先引导模型用 DSH Web preset 的 `web_search` 找来源，再用 `web_fetch` 阅读要引用的网页；`retrieve_functional_evidence` 补充本地已导入的记录。计划把网页引用保存为未整理的 `web` 证据，带 URL、标题、具体说明与 `claim_type`，并保留相反证据及不确定性。网页检索不会自动写入本地证据库；两个 DSH 网页工具也不是本插件自行实现的。
+插件不实现硬规则泛函推荐或 REST 计算执行。对每项计算任务的方法决策，AIFS 提示词先引导模型用 DSH 的 `web_search` 找来源，再用 `web_fetch` 阅读要引用的网页；`retrieve_functional_evidence` 补充本地已导入的记录。计划把网页引用保存为未整理的 `web` 证据，带 URL、标题、具体说明与 `claim_type`，并保留相反证据及不确定性。网页检索不会自动写入本地证据库；两个 DSH 网页工具也不是本插件自行实现的。
 
 ## 契约
 
@@ -41,7 +41,7 @@ npm run typecheck # tsc --noEmit
 
 ## 已知限制
 
-- 核心枚举 `job_type`、`empirical_dispersion`、`outputs` 仍需与后端同步。高级参数用 `rest_options` 传递，由后端契约校验；模型先用 `get_rest_capabilities` 查询具体区块。来源提交与接入范围见 [REST 能力范围](../packaging/rest-coverage.md)。
+- 结构契约及核心枚举从 Python 自动生成；只在 `schema-descriptions.ts` 单独维护模型说明。高级参数用 `rest_options` 传递，由后端契约校验；模型先用 `get_rest_capabilities` 查询具体区块。来源提交与接入范围见 [REST 能力范围](../packaging/rest-coverage.md)。
 - REST 计算执行仍未实现；证据图谱与检索通过后端 `POST /v1/evidence/search` 提供。
 - 未注册 `presentCall`/`presentResult`，UI 使用 generic 卡片渲染。
 
@@ -55,11 +55,11 @@ export DSH_HOME=/path/to/aifs/.dsh-home
 pnpm dsh plugin --profile web add /path/to/aifs/dsh-plugin-aifs
 ```
 
-bundle patch 会自动插入 `aifs` 工具行；后端地址可通过 `AIFS_BACKEND_URL` 覆盖，默认是 `http://127.0.0.1:8000`。插件不改模型提供商、协议、地址或凭据；DSH 按所选模型解析这些配置，支持官方与自定义路由并存。所选模型需支持工具调用。此命令安装 Web profile；桌面 profile 的安装接入尚未验收。
+bundle patch 会自动插入 `aifs` 工具行；后端地址可通过 `AIFS_BACKEND_URL` 覆盖，默认是 `http://127.0.0.1:8000`。插件不改模型提供商、协议、地址或凭据；DSH 按所选模型解析这些配置，支持官方与自定义路由并存。所选模型需支持工具调用。此命令是旧 Web 开发入口；桌面用户按仓库 README 添加 `.tgz`，不需要符号链接。
 
 ## 桌面托管模式
 
-桌面压缩包的 bundle 默认 `backendMode=managed`；插件源代码默认 external 以兼容原 Web 开发。managed 使用 DSH `subprocess` 服务，验证附带运行包摘要、ready 消息及 `/health` 的服务版本，再注册十个工具。数据默认 `$DSH_HOME/aifs/`；子进程使用随机回环端口，启停由插件生命周期负责。故障不自动循环拉起，需状态页点击重试。
+桌面压缩包的 bundle 默认 `backendMode=managed`；插件源代码默认 external 以兼容原 Web 开发。managed 使用 DSH `subprocess` 服务，验证附带运行包摘要、ready 消息及 `/health` 的服务版本，；十个工具在启用时即注册，调用等待所属服务或返回明确失败原因。数据默认 `$DSH_HOME/aifs/`；子进程使用随机回环端口，启停由插件生命周期负责。故障不自动循环拉起，需状态页点击重试。
 
 `src/desktop/runtime.ts` 管理进程，`skill.ts` 注册包内 Skill，`routes.ts` 使用 DSH 已认证的 `/api/aifs/status` 和 POST `/api/aifs/retry`，`ui.ts` 在插件页注册状态页面。外部模式保留 `baseUrl`，状态页面会注明服务尚待调用检查。Skill 随桌面包放进 `assets/skills/`，不依赖手工符号链接。
 
@@ -70,3 +70,7 @@ macOS arm64 调试包的构建与人工验收见仓库 `packaging/`。DSH 内部
 `src/plan-schema.ts` 为 create/revise 工具声明完整的嵌套 PlanDraft 字段和枚举。后端仍负责条件检查、依赖与状态判定。模型无需在用户工作区寻找 Python 源码。规划 Skill 提供可验证的优化后单点能完整示例。
 
 坐标单位在 `inputs.position_unit` 保存为 `angstrom|bohr`，出卡时对应 `[geom] unit`。未知单位阻止任务出卡；优化结果也要确认单位。插件提示词提前给出核实日期和规则，文献检索继续用于方法证据。历史卡 `position_unit_status=not_recorded` 时需说明单位未记录，并通过计划修订生成新卡。
+
+## 接口同步
+
+`src/generated/backend.ts` 来自 Python 模型；`src/plan-schema.ts` 装饰生成计划结构，`schema-descriptions.ts` 只加说明。参数和客户端响应类型使用生成结构及 SDK `InferValue`，不要重新手列 Python 字段。运行 `python -m aifs.contracts --write` 后提交生成文件；`npm test` 和打包会检查源码／产物摘要，CI 再用 Python 完整重生成比较。命令见 [脚本文档](../scripts/README.md#接口与任务维护)。

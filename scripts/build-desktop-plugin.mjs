@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { basename, dirname, join } from 'node:path'
 import { checkRelease } from './release.mjs'
+import { checkContracts } from './check-contracts.mjs'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const args = process.argv.slice(2)
 if (args.length && (args.length !== 2 || args[0] !== '--target')) throw new Error('Usage: node scripts/build-desktop-plugin.mjs [--target darwin-arm64|win32-x64]')
@@ -14,6 +15,7 @@ const archivePlatforms = { 'darwin-arm64': 'macos-arm64', 'win32-x64': 'windows-
 const archivePlatform = archivePlatforms[target]
 if (!archivePlatform) throw new Error(`Unsupported build target: ${target}`)
 await checkRelease(root, { installed: true })
+await checkContracts(root)
 const source = join(root, 'dsh-plugin-aifs')
 const require = createRequire(join(source, 'package.json'))
 const esbuild = require('esbuild')
@@ -54,6 +56,13 @@ await cp(join(root, 'packaging/requirements-desktop.lock'), join(stage, 'build-r
 await cp(join(root, 'packaging/README.md'), join(stage, 'README.md'))
 await cp(join(root, 'packaging/local-acceptance.md'), join(stage, 'local-acceptance.md'))
 await cp(join(root, 'packaging/rest-coverage.md'), join(stage, 'rest-coverage.md'))
+await cp(join(root, 'LICENSE'), join(stage, 'LICENSE'))
+await cp(join(root, 'THIRD_PARTY_NOTICES.md'), join(stage, 'THIRD_PARTY_NOTICES.md'))
+await mkdir(join(stage, 'licenses'), { recursive: true })
+for (const name of ['dsh-tools', 'dsh-llm', 'dsh-session', 'schemastery', 'cordis']) {
+  const directory = dirname(require.resolve(`@deepseek-ai/${name}/package.json`))
+  await cp(join(directory, 'LICENSE'), join(stage, 'licenses', `${name}.txt`))
+}
 const sdkHelpers = Object.fromEntries(await Promise.all(['dsh-tools', 'dsh-llm', 'dsh-session', 'schemastery'].map(async (name) => [name, JSON.parse(await readFile(require.resolve(`@deepseek-ai/${name}/package.json`), 'utf8')).version])))
 const dependencyLocks = Object.fromEntries(await Promise.all(['dsh-plugin-aifs/package-lock.json', 'packaging/requirements-desktop.lock'].map(async path => [path, createHash('sha256').update(await readFile(join(root, path))).digest('hex')])))
 await writeFile(join(stage, 'build-info.json'), JSON.stringify({ version: manifest.version, node: process.version, esbuild: esbuild.version, sdkHelpers, dependencyLocks, compatibility: manifest.aifs.compatibility, runtime: { target: runtimeManifest.target, python: runtimeManifest.python }, channel: 'local-debug' }, null, 2) + '\n')

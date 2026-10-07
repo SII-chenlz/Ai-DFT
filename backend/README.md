@@ -103,3 +103,13 @@ python -m aifs.evidence_cli search \
 - `RestInputRequest.position_unit` 接受 `angstrom|bohr`。旧单卡调用省略时使用 AIFS 的 Angstrom 默认值，并在 `defaults_applied` 和 `warnings` 中报告；模型应主动提交已确认单位。
 - 独立校验拒绝非法单位及非字符串单位。旧卡省略 unit 时保持格式兼容，但给出 `unit_not_recorded` 警告，不宣称物理单位已确认。
 - 历史卡读取增加 `position_unit` / `position_unit_status`，直接依据原卡正文；原正文、摘要、下载及版本关联不变。旧计划不补默认单位，不修改数据库历史。
+
+## 数据结构与历史兼容
+
+`workflow_schema.py` 是工作流库升级与快照读取的统一入口；结构版本记录在 SQLite `user_version`，每条 `plan_versions` 记录另有快照 `schema_version`，均独立于用户修订号和软件版本。首次打开已识别的旧库时先用 SQLite backup 保留 WAL 中已提交的数据到 `schema-backups/`，再事务补充版本；失败回滚并保留备份。
+
+历史 JSON、任务 ID、卡片正文和摘要不重写。旧空基组读取为未知，缺单位仍未知；不能自动变成已确认参数。新修订按当前格式保存。未来结构或快照格式返回明确的 409 错误，并阻止写入；写入门槛在事务内检查。`migrate` 只负责数据库搬家，结构升级在打开库时执行，两者不合并历史记录。
+
+## 生成接口契约
+
+`contracts.py` 从 Python 请求／响应模型导出版本化 `contracts/backend-schema.json`，生成插件 `src/generated/backend.ts`。运行 `python -m aifs.contracts --write` 更新，`--check` 只检查。插件描述单独维护，科学范围和 REST 组合仍在后端执行。详细开发命令见 [脚本文档](../scripts/README.md#接口与任务维护)。

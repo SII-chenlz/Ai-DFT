@@ -37,15 +37,17 @@ describe('generate_rest_input schema', () => {
       'force',
       'numerical dipole',
     ])
-    expect(parameters.properties?.empirical_dispersion?.enum).toEqual(['d3', 'd3bj', 'd4'])
+    expect(parameters.properties?.empirical_dispersion?.oneOf).toEqual([
+      { type: 'string', enum: ['d3', 'd3bj', 'd4'] }, { type: 'null' },
+    ])
   })
 
   it('types scalar parameters and pins the outputs enum', () => {
     const parameters = asJsonSchema(generate.parameters)
     expect(parameters.properties?.spin?.type).toBe('integer')
     expect(parameters.properties?.charge?.type).toBe('number')
-    expect(parameters.properties?.spin_polarization?.type).toBe('boolean')
-    expect(parameters.properties?.basis?.type).toBe('string')
+    expect(parameters.properties?.spin_polarization?.oneOf).toEqual([{ type: 'boolean' }, { type: 'null' }])
+    expect(parameters.properties?.basis?.oneOf).toEqual([{ type: 'string' }, { type: 'null' }])
     expect(parameters.properties?.outputs?.items?.enum).toEqual([
       'dipole',
       'fchk',
@@ -54,7 +56,7 @@ describe('generate_rest_input schema', () => {
       'geometry',
       'force',
       'force_for_ghost_point_charges',
-    ])
+    ].sort())
   })
 
   it('declares closed success and closed domain-error output branches', () => {

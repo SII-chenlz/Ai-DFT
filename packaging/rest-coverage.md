@@ -48,7 +48,7 @@ AIFS 的目标是覆盖官方 REST 的计算规划与输入文件，不执行计
 
 该任务 `job_type` 仍为 `energy`。决策中的 `xc_parser` 默认为 `legacy`，选择扩展变体时显式设为 `parse_xc`。区块可以为空但其存在可能触发计算，不应自动添加。`[analdrv]` 是设置区块，必须另外设置 `ctrl.analdrv_tasks` 来选择性质；几何优化的解析 Hessian 设置也可使用该区块。
 
-额外参数不能覆盖已确认的 xc、basis、charge、spin、position 或 unit。修订保留旧参数与旧卡；读取历史卡保持正文原样。旧库不需要重写，新增字段有兼容默认值。
+额外参数不能覆盖已确认的 xc、basis、charge、spin、position 或 unit。修订保留旧参数与旧卡；读取历史卡保持正文原样。旧库先备份，再升级结构版本；历史快照不重写，缺失单位或空基组仍视为未知。快照格式通过版本入口读取。
 
 ## 版本注意事项
 
@@ -59,4 +59,4 @@ AIFS 的目标是覆盖官方 REST 的计算规划与输入文件，不执行计
 - 原生 `[thermo]` 压力为 atm；geometric 的 `thermo=[T,P]` 压力为 bar。
 - README、当前 master 与用户安装的 REST 发布版本可能不同。正式运行前应确认目标版本支持输入中的特性。AIFS 当前无 REST 执行环境探测或数值结果验证。
 
-契约位于 `backend/src/aifs/rest/capabilities.py` 与 `catalogs.py`；生成与独立检查分别位于 `renderer.py`、`validator.py`。下一项接入需要同时更新契约、条件检查、工作流、DSH 参数与相应案例。
+契约位于 `backend/src/aifs/rest/capabilities.py` 与 `catalogs.py`；生成与独立检查分别位于 `renderer.py`、`validator.py`。下一项接入需要更新能力契约、条件检查、工作流和相应案例；若 Python 模型字段改变，重新生成 DSH 参数结构。
