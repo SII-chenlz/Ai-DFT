@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { releaseVersion } from '../release.mjs'
 
@@ -78,4 +78,19 @@ test('Windows package refuses a runtime for another platform before writing an a
   runtime.target = 'darwin-arm64'
   await writeFile(path, JSON.stringify(runtime))
   assert.throws(() => execFileSync(process.execPath, [join(root, 'scripts/build-desktop-plugin.mjs'), '--target', 'win32-x64'], { stdio: 'pipe' }), /Backend version\/target mismatch/)
+}))
+
+test('test upgrade can preserve the same-platform baseline archive and checksum', () => fixture(async (root, version) => {
+  const name = 'aifs-dsh-0.0.1-windows-x64-local.tgz'
+  const archive = join(root, 'dist', name)
+  await writeFile(archive, 'baseline archive bytes')
+  await writeFile(`${archive}.sha256`, 'baseline checksum bytes')
+  execFileSync(process.execPath, [join(root, 'scripts/build-desktop-plugin.mjs'), '--target', 'win32-x64'], {
+    env: { ...process.env, AIFS_UPDATE_LOCAL_PACKAGE: '0', AIFS_PRUNE_OLD_PACKAGES: '0' }, stdio: 'pipe',
+  })
+  assert.equal(await readFile(archive, 'utf8'), 'baseline archive bytes')
+  assert.equal(await readFile(`${archive}.sha256`, 'utf8'), 'baseline checksum bytes')
+  const next = join(root, `dist/aifs-dsh-${version}-windows-x64-local.tgz`)
+  const digest = createHash('sha256').update(await readFile(next)).digest('hex')
+  assert.equal(await readFile(`${next}.sha256`, 'utf8'), `${digest}  ${basename(next)}\n`)
 }))

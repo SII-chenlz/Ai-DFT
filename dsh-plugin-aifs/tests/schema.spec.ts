@@ -24,9 +24,9 @@ function asJsonSchema(value: unknown): JsonSchema {
 }
 
 describe('generate_rest_input schema', () => {
-  it('requires exactly the backend-required fields', () => {
+  it('requires explicit scientific inputs from the Python preparation model', () => {
     const parameters = asJsonSchema(generate.parameters)
-    expect(parameters.required).toEqual(['system_name', 'position', 'job_type', 'xc'])
+    expect(parameters.required).toEqual(['system_name', 'position', 'position_unit', 'job_type', 'xc', 'basis', 'charge', 'spin'])
   })
 
   it('mirrors the REST job types and dispersion values', () => {
@@ -47,7 +47,7 @@ describe('generate_rest_input schema', () => {
     expect(parameters.properties?.spin?.type).toBe('integer')
     expect(parameters.properties?.charge?.type).toBe('number')
     expect(parameters.properties?.spin_polarization?.oneOf).toEqual([{ type: 'boolean' }, { type: 'null' }])
-    expect(parameters.properties?.basis?.oneOf).toEqual([{ type: 'string' }, { type: 'null' }])
+    expect(parameters.properties?.basis?.type).toBe('string')
     expect(parameters.properties?.outputs?.items?.enum).toEqual([
       'dipole',
       'fchk',
@@ -72,6 +72,9 @@ describe('generate_rest_input schema', () => {
       'effective_settings',
       'defaults_applied',
       'warnings',
+      'filename',
+      'export_relative_path',
+      'validation',
     ])
     expect(success?.properties?.ok?.const).toBe(true)
     expect(success?.properties?.rest_input?.type).toBe('string')

@@ -19,6 +19,8 @@ supports the Harness LLM but the backend does not make the recommendation.
 
 from __future__ import annotations
 
+import hashlib
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -35,8 +37,11 @@ from aifs.evidence_models import (
     EvidenceSearchResponse,
 )
 from aifs.evidence_store import EvidenceStore
+from aifs.exports import direct_export_path
 from aifs.models import (
     DomainValidationError,
+    PreparedRestInputResponse,
+    PrepareRestInputRequest,
     RestInputRequest,
     RestInputResponse,
     ValidateInputRequest,
@@ -91,6 +96,27 @@ def health() -> dict[str, str]:
 def create_rest_input(request: RestInputRequest) -> RestInputResponse:
     """Render a structured request into a REST TOML input card."""
     return render_rest_input(request)
+
+
+@app.post("/v1/rest-inputs/prepare", response_model=PreparedRestInputResponse)
+def prepare_rest_input(request: PrepareRestInputRequest) -> PreparedRestInputResponse:
+    """Generate and independently check a card without creating a workflow record."""
+    rendered = render_rest_input(request)
+    validation = validate_rest_input(rendered.rest_input)
+    if not validation.valid:
+        raise DomainValidationError(
+            "card_validation_failed", "generated card failed independent validation"
+        )
+    name = re.sub(r"[^A-Za-z0-9_-]+", "-", request.system_name).strip("-") or "rest"
+    job = request.job_type.replace(" ", "-")
+    digest = hashlib.sha256(rendered.rest_input.encode("utf-8")).hexdigest()[:12]
+    filename = f"{name}-{job}-{digest}.in"
+    return PreparedRestInputResponse(
+        **rendered.model_dump(),
+        filename=filename,
+        export_relative_path=direct_export_path(filename),
+        validation=validation,
+    )
 
 
 @app.get("/v1/rest-capabilities")
@@ -163,7 +189,13 @@ def get_plan(plan_id: str, version: int | None = None) -> dict:
 def revise_plan(plan_id: str, request: PlanRevisionRequest) -> dict:
     store = _workflow_store()
     try:
-        return store.revise(plan_id, request.expected_version, request.change_reason, request.plan)
+        return store.revise(
+            plan_id,
+            request.expected_version,
+            request.change_reason,
+            request.plan,
+            patch=request.patch,
+        )
     finally:
         store.close()
 

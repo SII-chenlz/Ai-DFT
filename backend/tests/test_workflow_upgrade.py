@@ -6,7 +6,7 @@ import sqlite3
 
 import pytest
 
-from aifs.workflow_models import PlanDraft
+from aifs.workflow_models import PlanDraft, PlanPatch
 from aifs.workflow_store import WorkflowError, WorkflowStore
 
 LEGACY_SQL = """
@@ -210,7 +210,7 @@ def test_invalid_stored_snapshot_returns_a_structured_error_without_changes(tmp_
     store.close()
 
 
-@pytest.mark.parametrize("operation", ["create", "revise", "generate_card"])
+@pytest.mark.parametrize("operation", ["create", "revise", "revise_patch", "generate_card"])
 def test_future_format_written_during_preparation_blocks_the_transaction(
     tmp_path, monkeypatch, operation
 ):
@@ -266,16 +266,31 @@ def test_future_format_written_during_preparation_blocks_the_transaction(
 
         def action():
             return store.generate_card(plan["plan_id"], "h2")
-    else:
+    elif operation == "create":
         monkeypatch.setattr(store, "_check_evidence", lambda _: newer_program_writes())
-        if operation == "create":
 
-            def action():
-                return store.create(draft)
-        else:
+        def action():
+            return store.create(draft)
+    else:
+        # Revision now checks evidence while holding BEGIN IMMEDIATE. Inject
+        # the newer format before acquiring the lock, not through a writer
+        # that SQLite correctly blocks inside the transaction.
+        from contextlib import contextmanager
 
-            def action():
-                return store.revise(plan["plan_id"], 1, "attempt", draft)
+        transaction = store._write_transaction
+
+        @contextmanager
+        def before_transaction():
+            newer_program_writes()
+            with transaction() as connection:
+                yield connection
+
+        monkeypatch.setattr(store, "_write_transaction", before_transaction)
+
+        def action():
+            if operation == "revise_patch":
+                return store.revise(plan["plan_id"], 1, "attempt", patch=PlanPatch(question="new"))
+            return store.revise(plan["plan_id"], 1, "attempt", draft)
 
     with pytest.raises(WorkflowError, match="newer"):
         action()
@@ -283,3 +298,39 @@ def test_future_format_written_during_preparation_blocks_the_transaction(
     assert store.connection.execute("SELECT COUNT(*) FROM plan_versions").fetchone()[0] == 1
     assert store.connection.execute("SELECT COUNT(*) FROM cards").fetchone()[0] == 0
     store.close()
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_revision_lock_prevents_a_competing_format_write(tmp_path, monkeypatch, partial):
+    path = tmp_path / "workflow.sqlite3"
+    original, _, content, _ = legacy_database(path)
+    original.close()
+    store = WorkflowStore(path)
+    before = store.get("p")
+    evidence_check = store._check_evidence
+    attempts = []
+
+    def check_while_locked(draft):
+        with sqlite3.connect(path, timeout=0) as other:
+            with pytest.raises(sqlite3.OperationalError, match="locked"):
+                other.execute("PRAGMA user_version=99")
+            attempts.append(True)
+        evidence_check(draft)
+
+    monkeypatch.setattr(store, "_check_evidence", check_while_locked)
+    try:
+        if partial:
+            result = store.revise("p", 1, "new question", patch=PlanPatch(question="updated"))
+        else:
+            draft = PlanDraft.model_validate(before["plan"])
+            draft.question = "updated"
+            result = store.revise("p", 1, "new question", draft)
+        assert attempts == [True]
+        assert result["version"] == 2
+        assert result["plan"]["question"] == "updated"
+        assert result["plan"]["tasks"] == before["plan"]["tasks"]
+        assert store.get("p", 1)["plan"] == before["plan"]
+        assert store.get_card("p", "c")["content"] == content
+        assert store.connection.execute("PRAGMA user_version").fetchone()[0] == 1
+    finally:
+        store.close()

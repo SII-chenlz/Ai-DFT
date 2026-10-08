@@ -87,9 +87,10 @@ if (target === 'darwin-arm64' && process.env.AIFS_UPDATE_LOCAL_PACKAGE !== '0') 
 }
 // Prune older archives only after this build and its checksum are complete.
 // Match this platform/channel exactly; leave other artifacts and newer versions.
+// Keep the comparison baseline when preparing a test upgrade.
 const currentParts = manifest.version.split('-')[0].split('.').map(Number)
 let removed = 0
-for (const entry of await readdir(join(root, 'dist'), { withFileTypes: true })) {
+for (const entry of process.env.AIFS_PRUNE_OLD_PACKAGES === '0' ? [] : await readdir(join(root, 'dist'), { withFileTypes: true })) {
   if (!entry.isFile()) continue
   const match = /^aifs-dsh-(\d+\.\d+\.\d+(?:-[\da-zA-Z.-]+)?)-(macos-arm64|windows-x64)-local\.tgz(?:\.sha256)?$/.exec(entry.name)
   if (!match || match[2] !== archivePlatform || match[1] === manifest.version) continue

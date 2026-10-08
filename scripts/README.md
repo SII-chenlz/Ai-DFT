@@ -1,10 +1,10 @@
 # AIFS Scripts
 
-本地开发、打包与检查命令。模型接口和密钥在 DSH 设置中配置。
+开发、检查和打包命令；从 AIFS 根目录执行，另有说明除外。
 
 ## 本地联调
 
-桌面插件是当前主入口。需要单独调试 API 时，复制 `.env.example` 为 `.env.local`，设置 AIFS 数据与基组池配置，再运行 `./scripts/start-backend.sh`；`./scripts/check-local.sh` 检查后端生成与校验。模型接口及密钥继续在 DSH 设置。
+桌面插件是当前主入口。需要单独调试 API 时，复制 `.env.example` 为 `.env.local`，设置 AIFS 数据与基组池配置，再运行 `./scripts/start-backend.sh`；`./scripts/check-local.sh` 检查后端生成与校验。
 
 旧 Web 联调脚本不作为本轮维护和桌面验收入口。
 
@@ -42,14 +42,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows-loca
 
 成功后在运行页面的 **Artifacts** 下载 `aifs-windows-x64-<运行序号>` ZIP。解压 ZIP，取出其中的 `.tgz`，在 Windows DSH 添加插件时填写该 `.tgz` 的本机绝对路径。ZIP 内还包含 `.sha256` 和验证报告；Artifact 保存 14 天，需要长期留存时请下载保存。
 
-构建使用仓库的 `main`。后端检查通过后仍需在 Windows DSH 验收安装及真实对话。
+Windows 真实安装与模型对话按验收表另测。
 
 两个平台共用插件与 Skill，包中只包含对应平台的后端。成功打包只清理同平台、同渠道的旧压缩包，保留其他平台产物。
+
+准备升级测试、需要保留旧包作对照时，增加 `AIFS_PRUNE_OLD_PACKAGES=0`。例如 Mac 完整构建：
+
+```bash
+AIFS_UPDATE_LOCAL_PACKAGE=0 AIFS_PRUNE_OLD_PACKAGES=0 AIFS_PYTHON=/path/to/python3.11 ./scripts/build-macos-local.sh
+```
+
+这两个选项分别保留目录链接安装目标和旧压缩包及校验文件；新包仍按自己的版本号生成。
 
 ### 更新版本与检查
 
 版本来源为 `backend/src/aifs/__init__.py`。修改版本号后运行 `node scripts/release.mjs --sync`，再完整构建后端与插件。
-
 
 开发检查：
 
@@ -64,7 +71,7 @@ python -m aifs.contracts --check
 
 `verify-desktop-backend.py` 检查冻结后端；`verify-desktop-host.mjs` 检查 DSH 工具、Skill 和子进程服务。`verify-desktop-import.mjs` 由打包脚本自动执行，检查插件在没有开发依赖的目录中导入。
 
-更新桌面安装副本：完整构建后，在 DSH 卸载旧插件、添加新 `.tgz`，完全退出并重开。`AIFS_UPDATE_LOCAL_PACKAGE=0` 避免覆盖旧的目录链接安装目标；正常 `.tgz` 安装无需使用 `dist/package`，两种方式都不修改数据目录。
+更新桌面安装副本：完整构建后，在 DSH 卸载旧插件、添加新 `.tgz`，完全退出并重开。`AIFS_UPDATE_LOCAL_PACKAGE=0` 避免覆盖旧的目录链接安装目标；正常 `.tgz` 安装无需使用 `dist/package`，数据目录保留。
 
 ## 接口与任务维护
 

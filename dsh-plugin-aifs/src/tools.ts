@@ -9,14 +9,14 @@
 
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
-import type { AifsBackendClient, GenerateRestInputArgs, JsonValue } from './client.ts'
+import type { AifsBackendClient, PrepareRestInputArgs, JsonValue } from './client.ts'
 import { GENERATE_OUTPUT_SCHEMA, VALIDATE_OUTPUT_SCHEMA } from './schemas.ts'
 import { EVIDENCE_SEARCH_OUTPUT_SCHEMA } from './schemas.ts'
 import { PLAN_DRAFT_SCHEMA } from './plan-schema.ts'
-import { REST_INPUT_SCHEMA, VALIDATE_INPUT_SCHEMA, EVIDENCE_REQUEST_SCHEMA, PLAN_REVISION_SCHEMA } from './generated/backend.ts'
+import { PREPARE_INPUT_SCHEMA, VALIDATE_INPUT_SCHEMA, EVIDENCE_REQUEST_SCHEMA, PLAN_REVISION_SCHEMA } from './generated/backend.ts'
 import { withDescriptions, REST_DESCRIPTIONS } from './schema-descriptions.ts'
 
-const REST_PARAMETERS = withDescriptions(REST_INPUT_SCHEMA, REST_DESCRIPTIONS).properties
+const REST_PARAMETERS = withDescriptions(PREPARE_INPUT_SCHEMA, REST_DESCRIPTIONS).properties
 const EVIDENCE_PARAMETERS = withDescriptions(EVIDENCE_REQUEST_SCHEMA, {
   system_description: 'Description of the target system.',
   calculation_goal: 'Requested calculation or property.',
@@ -28,8 +28,67 @@ function renderJson(_args: unknown, value: unknown): Array<{ type: 'text'; text:
   return [{ type: 'text', text: JSON.stringify(value) }]
 }
 
+function record(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown> : undefined
+}
+
+function records(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.map(record).filter((item): item is Record<string, unknown> => item !== undefined) : []
+}
+
+function shortText(value: unknown, limit: number): string | undefined {
+  return typeof value === 'string' ? value.length > limit ? `${value.slice(0, limit)}…` : value : undefined
+}
+
+/** DSH sends rendered content to the model; the canonical value stays complete. */
+function renderPlan(args: unknown, value: unknown): Array<{ type: 'text'; text: string }> {
+  const result = record(value)
+  if (!result || result.ok === false) return renderJson(args, value)
+  const options = record(args)
+  const plan = record(result.plan)
+  const tasks = records(plan?.tasks)
+  const statuses = records(result.statuses)
+  const cards = records(result.cards)
+  if (typeof options?.task_id === 'string') {
+    const task = tasks.find(item => item.task_id === options.task_id)
+    if (!task) return renderJson(args, {
+      ok: false,
+      error: { code: 'task_not_found', message: `No task ${options.task_id} in this plan version` },
+      plan_id: result.plan_id, version: result.version,
+    })
+    return renderJson(args, {
+      ok: true, plan_id: result.plan_id, version: result.version,
+      task, status: statuses.find(item => item.task_id === task.task_id),
+      cards: cards.filter(item => item.task_id === task.task_id),
+    })
+  }
+  if (options?.view === 'full') return renderJson(args, value)
+  return renderJson(args, {
+    ok: result.ok, plan_id: result.plan_id, version: result.version,
+    goal: plan?.goal, question: shortText(plan?.question, 160),
+    tasks: tasks.map(task => {
+      const status = statuses.find(item => item.task_id === task.task_id)
+      return {
+        task_id: task.task_id, title: shortText(task.title, 120), kind: task.kind,
+        job_type: task.job_type, depends_on: task.depends_on,
+        state: status?.state, blockers: status?.blockers ?? [],
+        cards: cards.filter(card => card.task_id === task.task_id)
+          .map(card => ({
+            card_id: card.card_id, filename: card.filename, version: card.version,
+            export_relative_path: card.export_relative_path,
+            is_current_plan_version: card.is_current_plan_version,
+            is_applicable_to_current_plan: card.is_applicable_to_current_plan,
+          })),
+      }
+    }),
+    detail_hint: 'Use get_aifs_plan with task_id for one task; view=full is for explicit full export or debugging.',
+  })
+}
+
 /**
- * POST /v1/rest-inputs: render a structured request into a REST TOML card.
+ * POST /v1/rest-inputs/prepare: generate and independently validate a card.
  * A backend domain error (422 envelope) is returned as `{ ok: false, error }`;
  * only network/backend failures throw.
  */
@@ -37,8 +96,13 @@ export function defineGenerateRestInputTool(client: AifsBackendClient): ToolDefi
   return defineTool({
     name: 'generate_rest_input',
     description:
-      'Render a structured quantum-chemistry request into a REST TOML input card via the ' +
-      'AIFS backend. Returns the card, effective settings, applied defaults and warnings. ' +
+      'Prepare one REST .in file directly, without creating a plan. Supply confirmed ' +
+      'coordinates, coordinate unit, charge, multiplicity, functional and basis. The ' +
+      'AIFS backend generates and independently validates the card in one call, returning ' +
+      'rest_input, filename, export_relative_path, validation, effective settings, defaults and warnings. Export the exact body under the permitted workspace at export_relative_path. Use this ' +
+      'for independent ready calculations. Workflows with prerequisites or energy ' +
+      'combinations use create_aifs_plan and saved-task cards; dependent steps wait ' +
+      'for actual results. ' +
       'Domain incompatibilities (e.g. empirical dispersion on a double-hybrid/RPA method) ' +
       'come back as an ok=false structured result; only backend or network failures raise ' +
       'tool errors. The basis is a name inside the server-configured pool — never an ' +
@@ -49,8 +113,8 @@ export function defineGenerateRestInputTool(client: AifsBackendClient): ToolDefi
       render: renderJson,
     },
     async execute(args, exec) {
-      return client.generate({
-        ...args, rest_options: args.rest_options as GenerateRestInputArgs['rest_options'],
+      return client.prepare({
+        ...args, rest_options: args.rest_options as PrepareRestInputArgs['rest_options'],
       }, exec.signal)
     },
   })
@@ -115,11 +179,11 @@ export function defineRetrieveFunctionalEvidenceTool(client: AifsBackendClient):
 export function defineCreateAifsPlanTool(client: AifsBackendClient): ToolDefinition {
   return defineTool({
     name: 'create_aifs_plan',
-    description: 'Save a molecular calculation task plan. Supply question, goal and tasks with stable task_id, kind, dependencies, inputs, optional method candidates and decisions. The backend computes blockers and status; do not send status. For task-level evidence use web URL, title, specific claim note and claim_type, or a local record ID; keep opposing sources and uncertainty.',
+    description: 'Save the internal workflow automatically when calculations require preceding results or combine multiple energies, and when the user explicitly requests persistence for an independent calculation. Independent ready calculations otherwise use generate_rest_input. Supply one concise complete initial graph with stable task IDs, dependencies and required inputs/decisions; do not repeat long evidence or candidate lists. The backend computes blockers and status; do not send status. Creation returns a model-facing summary; use get_aifs_plan with task_id for details. User-facing replies describe calculations, not database operations.',
     parameters: {
       plan: { ...PLAN_DRAFT_SCHEMA, required: true, description: 'Complete PlanDraft. Missing scientific inputs may be null; backend derives status. Use this declared schema directly, without looking for backend source in the user workspace.' },
     },
-    output: { schema: { type: 'json' }, render: renderJson },
+    output: { schema: { type: 'json' }, render: renderPlan },
     async execute(args, exec) {
       return client.workflow('POST', '/v1/plans', args.plan as JsonValue, exec.signal)
     },
@@ -129,13 +193,18 @@ export function defineCreateAifsPlanTool(client: AifsBackendClient): ToolDefinit
 export function defineReviseAifsPlanTool(client: AifsBackendClient): ToolDefinition {
   return defineTool({
     name: 'revise_aifs_plan',
-    description: 'Revise a saved AIFS plan after the user supplies missing information or a method decision. Read its latest version first; old cards remain tied to their historical version.',
+    description: 'Revise a saved AIFS plan using a compact patch of changed fields. Read the latest summary and relevant task details first. Preserve confirmed choices unless the user changes them or agrees to a scientifically necessary revision. patch.tasks updates existing tasks by task_id; inputs/decision merge their supplied fields, other arrays/dictionaries replace that field. Omitted fields stay unchanged; null explicitly clears a nullable field. Use patch.add_tasks for new complete tasks and patch.remove_task_ids for removals. Full plan remains a compatibility option; normally send patch only. The backend checks the merged graph and saves a new version; old cards remain unchanged. Returns a model-facing summary.',
     parameters: {
-      ...PLAN_REVISION_SCHEMA.properties,
+      ...withDescriptions(PLAN_REVISION_SCHEMA, {
+        patch: 'Preferred compact revision: send only changes, not the full saved plan. Exactly one of patch or plan is required by the backend.',
+        'patch.tasks': 'Updates to existing tasks by task_id. Omitted nested inputs/decision fields are preserved. Lists and rest_options replace their whole field.',
+        'patch.add_tasks': 'Complete new tasks with unique IDs. Existing tasks do not need to be repeated.',
+        'patch.remove_task_ids': 'IDs to remove; retained tasks must not depend on a removed task.',
+        plan: 'Compatibility mode: complete replacement PlanDraft with every retained task. Prefer patch for incremental edits.',
+      }).properties,
       plan_id: { type: 'string', required: true },
-      plan: { ...PLAN_DRAFT_SCHEMA, required: true, description: 'Complete revised PlanDraft, including every retained task. Preserve IDs; copy only the plan draft from get_aifs_plan, not its status/card metadata.' },
     },
-    output: { schema: { type: 'json' }, render: renderJson },
+    output: { schema: { type: 'json' }, render: renderPlan },
     async execute(args, exec) {
       const { plan_id, ...revision } = args
       return client.workflow('PUT', `/v1/plans/${encodeURIComponent(plan_id)}`, revision as JsonValue, exec.signal)
@@ -158,12 +227,14 @@ export function defineListAifsPlansTool(client: AifsBackendClient): ToolDefiniti
 export function defineGetAifsPlanTool(client: AifsBackendClient): ToolDefinition {
   return defineTool({
     name: 'get_aifs_plan',
-    description: 'Read a saved plan, task blockers, and cards for its latest or a historical version.',
+    description: 'Read a saved workflow at its latest or a historical version. The default model-facing summary includes task names, IDs, states, blockers and card references without repeating coordinates or evidence. Supply task_id to read one complete task and its status/cards. Use view=full only for explicit full export or debugging; task_id takes precedence if supplied. The underlying HTTP response and canonical tool value remain complete.',
     parameters: {
       plan_id: { type: 'string', required: true },
       version: { type: 'integer', description: 'Historical version; omit for latest.' },
+      task_id: { type: 'string', description: 'Read details of this one task instead of the default summary.' },
+      view: { type: 'string', enum: ['summary', 'full'], description: 'Default summary. Full is for explicitly requested export/debugging; task_id selects one task when supplied.' },
     },
-    output: { schema: { type: 'json' }, render: renderJson },
+    output: { schema: { type: 'json' }, render: renderPlan },
     async execute(args, exec) {
       const path = `/v1/plans/${encodeURIComponent(args.plan_id)}${args.version === undefined ? '' : `?version=${args.version}`}`
       return client.workflow('GET', path, undefined, exec.signal)
@@ -174,7 +245,7 @@ export function defineGetAifsPlanTool(client: AifsBackendClient): ToolDefinition
 export function defineGenerateAifsTaskCardTool(client: AifsBackendClient): ToolDefinition {
   return defineTool({
     name: 'generate_aifs_task_card',
-    description: 'Generate, independently validate and save one REST .in card from a ready task in the latest saved AIFS plan. Missing or unsupported tasks return a blocker; never substitute the starting geometry for a missing optimized result.',
+    description: 'Generate, independently validate and save one REST .in card from a ready task in the latest saved AIFS plan, within the calculation scope the user requested. Identical existing cards are reused; is_applicable_to_current_plan expresses current applicability independently of the original card version. Missing or unsupported tasks return a blocker; never substitute the starting geometry for a missing optimized result. A saved dependency or supplied coordinate is not proof that a calculation has run.',
     parameters: {
       plan_id: { type: 'string', required: true },
       task_id: { type: 'string', required: true },
@@ -189,7 +260,7 @@ export function defineGenerateAifsTaskCardTool(client: AifsBackendClient): ToolD
 export function defineGetAifsCardTool(client: AifsBackendClient): ToolDefinition {
   return defineTool({
     name: 'get_aifs_card',
-    description: 'Read a saved card including its exact content, filename, plan version, validation result and current .in download URL. Use the returned content for direct display or file export; a previous localhost URL may be stale after restart.',
+    description: 'Read a saved card including its exact content, filename, stable export_relative_path, plan version, validation result and current .in download URL. Export the exact content at export_relative_path under the permitted workspace; a previous localhost URL may be stale after restart.',
     parameters: {
       plan_id: { type: 'string', required: true },
       card_id: { type: 'string', required: true },

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from copy import deepcopy
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, create_model, model_validator
 
 from aifs.models import DomainValidationError
 from aifs.rest.capabilities import normalize_xc, semantic_errors
@@ -185,10 +186,104 @@ class PlanDraft(StrictModel):
         return self
 
 
+def _partial_model(
+    name: str,
+    source: type[BaseModel],
+    *,
+    overrides: dict[str, Any] | None = None,
+    required: tuple[str, ...] = (),
+) -> type[BaseModel]:
+    """Reuse field types/constraints without running full-object validators on a patch.
+
+    Omitted fields have a placeholder default, removed by exclude_unset.
+    Explicit null is accepted only where the original field allows it.
+    Full validators run after the patch has been merged with the stored draft.
+    """
+    fields = {}
+    for key, original in source.model_fields.items():
+        field = deepcopy(original)
+        if key not in required:
+            field.default = None
+            field.default_factory = None
+        annotation = (overrides or {}).get(key, original.annotation)
+        fields[key] = (annotation, field)
+    return create_model(name, __base__=StrictModel, **fields)
+
+
+TaskInputsPatch = _partial_model("TaskInputsPatch", TaskInputs)
+MethodDecisionPatch = _partial_model("MethodDecisionPatch", MethodDecision)
+PlanTaskPatch = _partial_model(
+    "PlanTaskPatch",
+    PlanTask,
+    overrides={"inputs": TaskInputsPatch, "decision": MethodDecisionPatch | None},
+    required=("task_id",),
+)
+_PlanPatchFields = _partial_model(
+    "PlanPatchFields", PlanDraft, overrides={"tasks": list[PlanTaskPatch]}
+)
+
+
+class PlanPatch(_PlanPatchFields):
+    """Update existing tasks by ID; lists and rest_options replace their whole field."""
+
+    add_tasks: list[PlanTask] = Field(default_factory=list, max_length=100)
+    remove_task_ids: list[str] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def check_changes(self) -> PlanPatch:
+        updates = self.tasks or []
+        ids = [task.task_id for task in updates]
+        if len(ids) != len(set(ids)) or len(self.remove_task_ids) != len(set(self.remove_task_ids)):
+            raise ValueError("duplicate task IDs in patch")
+        if set(ids) & set(self.remove_task_ids):
+            raise ValueError("a task cannot be updated and removed in the same patch")
+        changes = self.model_dump(exclude_unset=True)
+        if not changes or all(value == [] for value in changes.values()):
+            raise ValueError("patch must contain a change")
+        if any(task.model_fields_set == {"task_id"} for task in updates):
+            raise ValueError("task patch must contain a change besides task_id")
+        return self
+
+    def apply_to(self, original: PlanDraft) -> PlanDraft:
+        draft = original.model_dump()
+        changes = self.model_dump(exclude_unset=True)
+        tasks = {task["task_id"]: task for task in draft["tasks"]}
+        for task_id in self.remove_task_ids:
+            if task_id not in tasks:
+                raise ValueError(f"unknown task ID to remove: {task_id}")
+            del tasks[task_id]
+        for update in changes.pop("tasks", []):
+            task_id = update.pop("task_id")
+            if task_id not in tasks:
+                raise ValueError(f"unknown task ID to update: {task_id}")
+            task = tasks[task_id]
+            for key, value in update.items():
+                if key in {"inputs", "decision"} and isinstance(value, dict):
+                    task[key] = {**(task[key] or {}), **value}
+                else:
+                    task[key] = value
+        for task in self.add_tasks:
+            if task.task_id in tasks or task.task_id in self.remove_task_ids:
+                raise ValueError(f"task ID already exists or was removed: {task.task_id}")
+            tasks[task.task_id] = task.model_dump()
+        changes.pop("add_tasks", None)
+        changes.pop("remove_task_ids", None)
+        draft.update(changes)
+        draft["tasks"] = list(tasks.values())
+        return PlanDraft.model_validate(draft)
+
+
 class PlanRevisionRequest(StrictModel):
     expected_version: int = Field(ge=1)
     change_reason: str = Field(min_length=1, max_length=2000)
-    plan: PlanDraft
+    plan: PlanDraft | None = None
+    patch: PlanPatch | None = None
+
+    @model_validator(mode="after")
+    def check_mode(self) -> PlanRevisionRequest:
+        if (self.plan is None) == (self.patch is None):
+            raise ValueError("provide exactly one of plan or patch")
+        return self
 
 
 class TaskStatus(StrictModel):
@@ -232,12 +327,20 @@ def task_status(
         blockers.append("confirmed charge is missing")
     if task.inputs.spin is None or not task.inputs.spin_source:
         blockers.append("confirmed spin multiplicity is missing")
-    if task.job_type == "energy" and any(by_id[dep].job_type == "opt" for dep in task.depends_on):
+    if any(by_id[dep].job_type == "opt" for dep in task.depends_on):
         if task.inputs.position_source not in {"prior_result", "external_optimized"}:
             blockers.append("optimized coordinates from the preceding task are required")
-    if task.inputs.position_source == "prior_result" and task.inputs.position_from_task:
-        if by_id[task.inputs.position_from_task].job_type != "opt":
-            blockers.append("position source must be an optimization task")
+        elif not task.inputs.position_from_task:
+            blockers.append("the optimization task providing these coordinates must be specified")
+    if task.inputs.position_from_task:
+        source = by_id.get(task.inputs.position_from_task)
+        if (
+            source is None
+            or source.kind != "rest"
+            or source.job_type != "opt"
+            or source.task_id not in task.depends_on
+        ):
+            blockers.append("position source must be a directly dependent REST optimization task")
     if blockers:
         return TaskStatus(task_id=task.task_id, state="needs_input", blockers=blockers)
     if task.decision is None:

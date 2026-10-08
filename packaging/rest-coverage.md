@@ -1,14 +1,14 @@
 # REST 能力范围
 
-AIFS 的目标是覆盖官方 REST 的计算规划与输入文件，不执行计算。当前输入契约核对至 [REST 源码 `6fa7f3b`](https://gitee.com/restgroup/rest/tree/6fa7f3b0b6476fa533dfc38af8b8505730713ac6)（2026-10-02 提交）。下列“已接入”指可保存参数、生成并由 AIFS 独立检查输入；尚未用 REST 执行这些新任务。
+AIFS 生成输入，不执行计算。当前规则核对至 [REST 源码 `6fa7f3b`](https://gitee.com/restgroup/rest/tree/6fa7f3b0b6476fa533dfc38af8b8505730713ac6)（2026-10-02 提交）。下列“已接入”指可保存参数、生成并由 AIFS 独立检查输入；尚未用 REST 执行这些新任务。
 
 ## 已接入
 
 | 能力 | 输入表示 | 当前条件 |
 | --- | --- | --- |
 | 单点能、优化、力、数值偶极 | `job_type` | 坐标、单位、电荷、自旋与方法已确认 |
-| 新增范围分离方法 | legacy：wB97X、CAM-B3LYP、LC-BLYP、LC-wPBE、HSE03/06 | 对目标性质评估依据，不固定推荐某个方法 |
-| 新增 parse_xc 变体 | wB97X-V、wB97M-V、wB97X-D3、wB97X-D3BJ、wB97M-D3BJ | 变体原样保存；含 VV10 优化/力须显式数值力，不支持未经核对的解析 Hessian/响应组合 |
+| 范围分离方法 | legacy：wB97X、CAM-B3LYP、LC-BLYP、LC-wPBE、HSE03/06 | 对目标性质评估依据，不固定推荐某个方法 |
+| parse_xc 变体 | wB97X-V、wB97M-V、wB97X-D3、wB97X-D3BJ、wB97M-D3BJ | 变体原样保存；含 VV10 优化/力须显式数值力，不支持未经核对的解析 Hessian/响应组合 |
 | 原生 Hessian、谐振频率 | `energy` + `[hessian]` 或 `[ctrl.hessian]` | 限已声明的闭壳层 HF/LDA/GGA/常规杂化；mGGA、RSH 与后 SCF 方法阻塞 |
 | analdrv Hessian、谐振频率 | `energy` + `ctrl.analdrv_tasks=["hessian"]`、可选 `[analdrv]` | 支持已接入 SCF 方法的限制性／非限制性参考，包括 RSH、mGGA；不支持 ROHF、后 SCF 或未经核对的 VV10 导数 |
 | 电多极矩 | `ctrl.analdrv_tasks=["multipole"]`、`[analdrv]` | 1–4 阶、参考原点 Bohr；SCF 支持开放壳层，指定 PT2 家族后 SCF 仅限制性、无冻结芯；密度导出尚未接入 |
@@ -34,7 +34,7 @@ AIFS 的目标是覆盖官方 REST 的计算规划与输入文件，不执行计
 | 任意 LibXC 与自定义 parse_xc 表达式 | 组件、系数、参数与多步泛函解析；目前仅接入明确列出的名字 |
 | 基组、ECP、自定义运行文件 | 实际目标环境的路径与文件准备；当前 basis 参数仍是配置池中的名字 |
 
-这些步骤可先以待接入任务保存，不能用其他卡冒充已支持。清单作为后续接入顺序与验收范围，每项完成后更新状态。
+未接入步骤可保存为待支持任务，不生成替代卡。
 
 ## 契约与查询
 
@@ -48,7 +48,7 @@ AIFS 的目标是覆盖官方 REST 的计算规划与输入文件，不执行计
 
 该任务 `job_type` 仍为 `energy`。决策中的 `xc_parser` 默认为 `legacy`，选择扩展变体时显式设为 `parse_xc`。区块可以为空但其存在可能触发计算，不应自动添加。`[analdrv]` 是设置区块，必须另外设置 `ctrl.analdrv_tasks` 来选择性质；几何优化的解析 Hessian 设置也可使用该区块。
 
-额外参数不能覆盖已确认的 xc、basis、charge、spin、position 或 unit。修订保留旧参数与旧卡；读取历史卡保持正文原样。旧库先备份，再升级结构版本；历史快照不重写，缺失单位或空基组仍视为未知。快照格式通过版本入口读取。
+额外参数不能覆盖已确认的 xc、basis、charge、spin、position 或 unit。修订与历史兼容见 [后端说明](../backend/README.md#局部修订计划)。
 
 ## 版本注意事项
 
@@ -59,4 +59,4 @@ AIFS 的目标是覆盖官方 REST 的计算规划与输入文件，不执行计
 - 原生 `[thermo]` 压力为 atm；geometric 的 `thermo=[T,P]` 压力为 bar。
 - README、当前 master 与用户安装的 REST 发布版本可能不同。正式运行前应确认目标版本支持输入中的特性。AIFS 当前无 REST 执行环境探测或数值结果验证。
 
-契约位于 `backend/src/aifs/rest/capabilities.py` 与 `catalogs.py`；生成与独立检查分别位于 `renderer.py`、`validator.py`。下一项接入需要更新能力契约、条件检查、工作流和相应案例；若 Python 模型字段改变，重新生成 DSH 参数结构。
+契约位于 `backend/src/aifs/rest/capabilities.py` 与 `catalogs.py`；生成与独立检查分别位于 `renderer.py`、`validator.py`。新增输入更新能力描述、生成器、校验器和测试；现有任务字段不能表达时再扩展工作流。Python 接口字段变化后重新生成插件契约。

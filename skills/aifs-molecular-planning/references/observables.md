@@ -13,6 +13,8 @@ Start from **what the user wants to obtain or compare**, for any molecular syste
 
 If the experimental observable is unclear, use a concise DSH question panel when available, with plain explanations such as threshold, band position or full spectrum. Do not ask the user to decide whether a physically required correction exists. Do not ask again when the scope is already clear. Preserve explicit electronic-only scope; do not promise a 0–0 comparison for an uncorrected energy. If a correction is required, **save its calculation/source and analysis tasks**, not just a reminder after delivering cards.
 
+These dependent calculations and energy combinations use the saved-workflow path automatically. Create a concise complete graph once, then patch changed inputs; do not make the user request database persistence or repeatedly serialize the entire plan. Deliver the ready files now and explain the results needed for later steps. This applies to any system, not just a cluster example.
+
 For a zero-point-corrected energy difference, use the process stoichiometry:
 
 `delta_E_0 = sum(products: coefficient * (E_electronic + ZPE)) - sum(reactants: coefficient * (E_electronic + ZPE))`
@@ -22,6 +24,8 @@ The ZPE correction can have either sign. Atomic species and a free electron have
 For **molecular electron detachment** specifically, the reusable pattern is:
 
 `ADE_0 = E(neutral, neutral geometry) - E(anion, anion geometry) + ZPE(neutral) - ZPE(anion)`
+
+`ADE_electronic = E(neutral, neutral geometry) - E(anion, anion geometry)`
 
 `VDE_electronic = E(neutral, anion geometry) - E(anion, anion geometry)`
 
@@ -38,4 +42,3 @@ AIFS currently saves tasks/formulas and prepares input cards; it does not run fr
 The fixed-geometry VDE is not universally the maximum of a measured photoelectron band. The 0–0 ADE is the vibrational-ground-state threshold, not automatically the first visible onset: Franck–Condon intensities, hot bands, unresolved transitions and the experimental assignment matter. Describe the comparison conditionally; do not save a blanket peak/onset equality in task notes. See [a primary study demonstrating a band maximum different from VDE](https://iopenshell.usc.edu/pubs/abstracts/134/).
 
 Definition references for molecular ADE: [neutral-minus-anion ZPE correction to the 0–0 transition](https://pubs.rsc.org/en/content/articlehtml/2020/cp/d0cp05204c) and [electronic differences at each optimized geometry with ZPE corrections](https://pmc.ncbi.nlm.nih.gov/articles/PMC9862062/). These define observables, not functional recommendations for a particular system.
-

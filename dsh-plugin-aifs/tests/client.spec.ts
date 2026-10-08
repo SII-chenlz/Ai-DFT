@@ -53,6 +53,30 @@ afterEach(() => {
 })
 
 describe('AifsBackendClient.generate', () => {
+  it('prepares and validates a direct card in one request without a plan', async () => {
+    const prepared = { rest_input: '[ctrl]', effective_settings: {}, defaults_applied: [], warnings: [],
+      filename: 'H2-energy.in', export_relative_path: 'aifs-inputs/H2-energy/H2-energy.in', validation: { valid: true, errors: [], warnings: [], parsed_sections: ['ctrl', 'geom'] } }
+    const fetchMock = vi.fn(async (_url: URL, _init: RequestInit) => jsonResponse(prepared))
+    vi.stubGlobal('fetch', fetchMock)
+    const args = { ...ARGS, basis: 'def2-TZVP', position_unit: 'angstrom' as const, charge: 0, spin: 1 }
+    const result = await new AifsBackendClient(CONFIG).prepare(args, new AbortController().signal)
+    expect(result).toEqual({ ...prepared, ok: true })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0]![0])).toBe('http://127.0.0.1:8000/v1/rest-inputs/prepare')
+    expect(JSON.parse(String(fetchMock.mock.calls[0]![1].body))).toEqual(args)
+  })
+  it.each([undefined, { valid: false, errors: [], warnings: [], parsed_sections: [] }])('rejects preparation without a successful independent check', async validation => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ rest_input: '[ctrl]', filename: 'H2-energy.in', validation })))
+    await expect(new AifsBackendClient(CONFIG).prepare({ ...ARGS, basis: 'def2-TZVP', position_unit: 'angstrom', charge: 0, spin: 1 }, new AbortController().signal))
+      .rejects.toThrow(/no independently validated card/)
+  })
+  it('does not disguise workflow schema errors as a normal domain result', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({
+      error: { code: 'request_validation_error', detail: [{ loc: ['body', 'plan'], msg: 'bad field' }] },
+    }, 422)))
+    await expect(new AifsBackendClient(CONFIG).workflow('POST', '/v1/plans', {}, new AbortController().signal))
+      .rejects.toThrow(/request_validation_error/)
+  })
   it('POSTs structured JSON to /v1/rest-inputs and wraps the 200 result', async () => {
     const fetchMock = vi.fn(async () => jsonResponse({
       rest_input: '[ctrl]',

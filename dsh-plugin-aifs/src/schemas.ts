@@ -1,12 +1,12 @@
 /** Generated Python outputs plus the plugin-owned domain error envelope. */
 import type { ValueSchemaSpec } from '@deepseek-ai/dsh-tools'
 
-import { REST_RESPONSE_SCHEMA, VALIDATE_RESPONSE_SCHEMA, EVIDENCE_RESPONSE_SCHEMA } from './generated/backend.ts'
+import { PREPARE_RESPONSE_SCHEMA, VALIDATE_RESPONSE_SCHEMA, EVIDENCE_RESPONSE_SCHEMA } from './generated/backend.ts'
 
 /** Client adds ok to the Python render response. */
 export const GENERATE_SUCCESS_SCHEMA = {
-  ...REST_RESPONSE_SCHEMA,
-  properties: { ok: { type: 'boolean', required: true, const: true }, ...REST_RESPONSE_SCHEMA.properties },
+  ...PREPARE_RESPONSE_SCHEMA,
+  properties: { ok: { type: 'boolean', required: true, const: true }, ...PREPARE_RESPONSE_SCHEMA.properties },
 } as const satisfies ValueSchemaSpec
 
 /** Structured domain failure: the backend's 422 error envelope. */

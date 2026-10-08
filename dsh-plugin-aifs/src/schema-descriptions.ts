@@ -41,13 +41,13 @@ export const PLAN_DESCRIPTIONS = {
 export const REST_DESCRIPTIONS = {
   system_name: 'Short name of the molecular system.',
   position: 'Multi-line geometry, one Element x y z line per atom.',
-  position_unit: 'Confirmed coordinate unit, written to [geom] unit. Legacy omission defaults to angstrom with a warning.',
+  position_unit: 'Required confirmed coordinate unit, written to [geom] unit; no guessed default.',
   xc: 'Exact exchange-correlation method name; query get_rest_capabilities before selecting a variant.',
   xc_parser: 'Defaults to legacy; select parse_xc only when the capability contract requires it.',
   rest_options: 'Reviewed REST section settings; no raw TOML or core field overrides. Query capabilities for fields, units and combination limits.',
-  basis: 'Basis name inside the configured pool. Relative only; absolute paths and .. segments are rejected.',
-  charge: 'Net molecular charge; standalone default 0.',
-  spin: 'Multiplicity 2S+1, minimum 1; standalone default 1.',
+  basis: 'Required selected basis name inside the configured pool. Relative only; absolute paths and .. segments are rejected.',
+  charge: 'Required confirmed net molecular charge; no guessed neutral default.',
+  spin: 'Required confirmed multiplicity 2S+1, minimum 1; no guessed singlet default.',
   spin_polarization: 'Derived from spin when omitted or null.',
   outputs: 'Extra REST output items. The backend enforces the declared catalog.',
 }

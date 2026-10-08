@@ -7,7 +7,7 @@ import json
 import re
 import sqlite3
 from copy import deepcopy
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 from fastapi.testclient import TestClient
@@ -72,6 +72,694 @@ def _reaction() -> dict:
             },
         ],
     }
+
+
+def test_saved_exports_keep_one_plan_directory_and_task_history_after_revision(api):
+    saved = api.post("/v1/plans", json=_reaction()).json()
+    plan_url = f"/v1/plans/{saved['plan_id']}"
+    first = api.post(plan_url + "/tasks/A/cards").json()
+    other = api.post(plan_url + "/tasks/B/cards").json()
+    first_path = PurePosixPath(first["export_relative_path"])
+    other_path = PurePosixPath(other["export_relative_path"])
+    assert first_path.parts[:2] == other_path.parts[:2]
+    assert first_path.parent != other_path.parent
+    assert first_path.name == first["filename"]
+    assert not first_path.is_absolute() and ".." not in first_path.parts
+    reply = api.put(plan_url, json={
+        "expected_version": 1,
+        "change_reason": "Change method and display text",
+        "patch": {"question": "Renamed workflow", "tasks": [{
+            "task_id": "A", "title": "Renamed task", "decision": {"xc": "PBE0"},
+        }]},
+    })
+    assert reply.status_code == 200, reply.text
+    updated = api.post(plan_url + "/tasks/A/cards").json()
+    assert PurePosixPath(updated["export_relative_path"]).parent == first_path.parent
+    assert updated["export_relative_path"] != first["export_relative_path"]
+    historical = api.get(plan_url + f"/cards/{first['card_id']}").json()
+    assert historical["export_relative_path"] == first["export_relative_path"]
+    assert historical["content"] == first["content"]
+    assert api.get(first["download_path"]).text == first["content"]
+    current = api.get(plan_url).json()
+    assert next(c for c in current["cards"] if c["card_id"] == updated["card_id"])[
+        "export_relative_path"
+    ] == updated["export_relative_path"]
+
+
+def test_partial_revision_preserves_other_tasks_evidence_and_historical_cards(api):
+    draft = _reaction()
+    draft["tasks"][0]["decision"]["supporting"] = [
+        {
+            "source": "web",
+            "url": "https://example.org/paper",
+            "title": "Method study",
+            "note": "Reports the method used, not a ranking",
+            "claim_type": "method_used",
+        }
+    ]
+    saved = api.post("/v1/plans", json=draft).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    old_card = api.post(path + "/tasks/A/cards").json()
+    reply = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "User selected another basis for A",
+            "patch": {"tasks": [{"task_id": "A", "decision": {"basis": "def2-TZVP"}}]},
+        },
+    )
+    assert reply.status_code == 200, reply.text
+    revised = reply.json()
+    assert revised["version"] == 2
+    before = saved["plan"]["tasks"][0]
+    after = revised["plan"]["tasks"][0]
+    assert after["decision"]["basis"] == "def2-TZVP"
+    assert after["decision"]["xc"] == "PBE"
+    assert after["decision"]["supporting"] == before["decision"]["supporting"]
+    assert revised["plan"]["tasks"][1:] == saved["plan"]["tasks"][1:]
+    assert api.get(path + "?version=1").json()["plan"] == saved["plan"]
+    assert api.get(old_card["download_path"]).text == old_card["content"]
+    new_card = api.post(path + "/tasks/A/cards").json()
+    assert new_card["request"]["basis"] == "def2-TZVP"
+    stale = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "stale update",
+            "patch": {"question": "stale"},
+        },
+    )
+    assert stale.status_code == 409
+    assert api.get(path).json()["version"] == 2
+
+
+def test_partial_result_revision_keeps_source_and_unknown_units_block_cards(api):
+    opt, sp = _task("opt", "opt"), _task("sp", "energy")
+    sp["depends_on"] = ["opt"]
+    sp["inputs"].update(
+        position=None, position_unit=None, position_source="prior_result", position_from_task="opt"
+    )
+    saved = api.post(
+        "/v1/plans",
+        json={
+            "question": "Optimize then energy",
+            "goal": "optimization_single_point",
+            "tasks": [opt, sp],
+        },
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    reply = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "Actual output",
+            "patch": {
+                "tasks": [
+                    {
+                        "task_id": "sp",
+                        "inputs": {"position": "H 0 0 0\nH 0 0 1.4", "position_unit": "bohr"},
+                    }
+                ]
+            },
+        },
+    )
+    assert reply.status_code == 200, reply.text
+    task = reply.json()["plan"]["tasks"][1]
+    assert task["inputs"]["position_from_task"] == "opt"
+    assert task["inputs"]["position_source"] == "prior_result"
+    assert task["inputs"]["charge_source"] == "user"
+    assert api.post(path + "/tasks/sp/cards").json()["position_unit"] == "bohr"
+    cleared = api.put(
+        path,
+        json={
+            "expected_version": 2,
+            "change_reason": "Unit uncertain",
+            "patch": {"tasks": [{"task_id": "sp", "inputs": {"position_unit": None}}]},
+        },
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["statuses"][1]["state"] == "needs_input"
+    assert api.post(path + "/tasks/sp/cards").status_code == 422
+
+
+def _result_workflow() -> dict:
+    """Two optimizations with the geometry consumers used for ADE/VDE and ZPE."""
+    tasks = [_task("opt_anion", "opt"), _task("opt_neutral", "opt")]
+    for task_id, source in (
+        ("anion_energy", "opt_anion"),
+        ("neutral_energy", "opt_neutral"),
+        ("vertical_energy", "opt_anion"),
+        ("anion_frequency", "opt_anion"),
+        ("neutral_frequency", "opt_neutral"),
+    ):
+        task = _task(task_id, "energy")
+        task["depends_on"] = [source]
+        task["inputs"].update(position_source="prior_result", position_from_task=source)
+        if "frequency" in task_id:
+            task["rest_options"] = {"ctrl": {"analdrv_tasks": ["hessian"]}}
+        tasks.append(task)
+    return {"question": "Prepare detachment energy and ZPE steps", "goal": "other", "tasks": tasks}
+
+
+@pytest.mark.parametrize("job", ["energy", "force", "numerical dipole"])
+def test_every_rest_optimization_consumer_requires_explicit_result_source(api, job):
+    opt, consumer = _task("opt", "opt"), _task("property", job)
+    consumer["depends_on"] = ["opt"]
+    body = {"question": "Optimize then property", "goal": "other", "tasks": [opt, consumer]}
+    saved = api.post("/v1/plans", json=body).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    assert saved["statuses"][1]["state"] == "needs_input"
+    consumer["inputs"]["position_source"] = "external_optimized"
+    response = api.put(
+        path, json={"expected_version": 1, "change_reason": "external result", "plan": body}
+    )
+    assert response.status_code == 200
+    assert response.json()["statuses"][1]["state"] == "needs_input"
+    consumer["inputs"].update(position_from_task="opt", position_unit="bohr")
+    response = api.put(
+        path, json={"expected_version": 2, "change_reason": "identify result", "plan": body}
+    )
+    assert response.status_code == 200, response.text
+    card = api.post(path + "/tasks/property/cards")
+    assert card.status_code == 201, card.text
+    assert card.json()["position_unit"] == "bohr"
+    standalone = deepcopy(consumer)
+    standalone["depends_on"] = []
+    standalone["inputs"]["position_from_task"] = None
+    response = api.post(
+        "/v1/plans", json={"question": "External structure", "goal": "other", "tasks": [standalone]}
+    )
+    assert response.status_code == 201
+    assert response.json()["statuses"][0]["state"] == "ready_for_card"
+
+
+def test_old_nonoptimization_result_source_is_readable_but_cannot_generate(api):
+    parent, consumer = _task("energy", "energy"), _task("property", "force")
+    consumer["depends_on"] = ["energy"]
+    consumer["inputs"].update(position_source="prior_result", position_from_task="energy")
+    response = api.post(
+        "/v1/plans",
+        json={"question": "Historical source", "goal": "other", "tasks": [parent, consumer]},
+    )
+    assert response.status_code == 201
+    saved = response.json()
+    assert saved["statuses"][1]["state"] == "needs_input"
+    assert "optimization task" in str(saved["statuses"][1]["blockers"])
+    path = f"/v1/plans/{saved['plan_id']}"
+    assert api.get(path).status_code == 200
+    assert api.post(path + "/tasks/property/cards").status_code == 422
+
+
+@pytest.mark.parametrize("mode", ["patch", "plan"])
+@pytest.mark.parametrize("change", ["basis", "position", "charge", "spin", "rest_options"])
+def test_optimization_setting_change_invalidates_all_its_consumers_only(api, mode, change):
+    body = _result_workflow()
+    saved = api.post("/v1/plans", json=body).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    old_card = api.post(path + "/tasks/anion_energy/cards").json()
+    update = {"task_id": "opt_anion"}
+    if change == "basis":
+        update["decision"] = {"basis": "def2-TZVP"}
+    elif change == "rest_options":
+        update["rest_options"] = {"ctrl": {"num_threads": 2}}
+    else:
+        value = {"position": "H 0 0 0\nH 0 0 0.8", "charge": -1, "spin": 2}[change]
+        update["inputs"] = {change: value}
+    # Even fresh-looking coordinates in the same edit cannot bypass invalidation.
+    result_update = {
+        "task_id": "anion_energy",
+        "inputs": {"position": "H 0 0 0\nH 0 0 1.5", "position_unit": "bohr"},
+    }
+    if mode == "patch":
+        revision = {"patch": {"tasks": [update, result_update]}}
+    else:
+        body = deepcopy(saved["plan"])
+        for task_update in (update, result_update):
+            target = next(
+                task for task in body["tasks"] if task["task_id"] == task_update["task_id"]
+            )
+            for key, value in task_update.items():
+                if key in {"inputs", "decision"}:
+                    target[key].update(value)
+                elif key != "task_id":
+                    target[key] = value
+        revision = {"plan": body}
+    response = api.put(
+        path, json={"expected_version": 1, "change_reason": "new optimization settings", **revision}
+    )
+    assert response.status_code == 200, response.text
+    revised = response.json()
+    by_id = {task["task_id"]: task for task in revised["plan"]["tasks"]}
+    for task_id in ("anion_energy", "vertical_energy", "anion_frequency"):
+        inputs = by_id[task_id]["inputs"]
+        assert inputs["position"] is None and inputs["position_unit"] is None
+        assert inputs["position_from_task"] == "opt_anion"
+        assert inputs["charge"] == 0 and inputs["spin"] == 1
+        assert api.post(path + f"/tasks/{task_id}/cards").status_code == 422
+    assert by_id["neutral_energy"] == saved["plan"]["tasks"][3]
+    assert by_id["neutral_frequency"] == saved["plan"]["tasks"][6]
+    assert api.get(old_card["download_path"]).text == old_card["content"]
+    assert (
+        api.get(path + f"/cards/{old_card['card_id']}").json()["is_applicable_to_current_plan"]
+        is False
+    )
+    # A later, separate result update is accepted.
+    supplied = api.put(
+        path,
+        json={
+            "expected_version": 2,
+            "change_reason": "actual result",
+            "patch": {"tasks": [result_update]},
+        },
+    )
+    assert supplied.status_code == 200
+    assert api.post(path + "/tasks/anion_energy/cards").status_code == 201
+
+
+@pytest.mark.parametrize("mode", ["patch", "plan"])
+def test_replacing_shared_result_clears_unmodified_consumers_and_preserves_explicit_updates(
+    api, mode
+):
+    saved = api.post("/v1/plans", json=_result_workflow()).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    updates = [
+        {"task_id": task_id, "inputs": {"position": "H 0 0 0\nH 0 0 1.5", "position_unit": "bohr"}}
+        for task_id in ("anion_energy", "vertical_energy")
+    ]
+    if mode == "patch":
+        revision = {"patch": {"tasks": updates}}
+    else:
+        body = deepcopy(saved["plan"])
+        for task in body["tasks"]:
+            if task["task_id"] in {"anion_energy", "vertical_energy"}:
+                task["inputs"].update(updates[0]["inputs"])
+        revision = {"plan": body}
+    response = api.put(
+        path, json={"expected_version": 1, "change_reason": "replace result", **revision}
+    )
+    assert response.status_code == 200, response.text
+    tasks = {task["task_id"]: task for task in response.json()["plan"]["tasks"]}
+    assert tasks["anion_energy"]["inputs"]["position_unit"] == "bohr"
+    assert tasks["vertical_energy"]["inputs"]["position_unit"] == "bohr"
+    assert tasks["anion_frequency"]["inputs"]["position"] is None
+    assert tasks["neutral_frequency"] == saved["plan"]["tasks"][6]
+
+
+def test_changing_between_two_optimization_sources_requires_separate_result(api):
+    saved = api.post("/v1/plans", json=_result_workflow()).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    reply = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "switch source",
+            "patch": {
+                "tasks": [
+                    {
+                        "task_id": "vertical_energy",
+                        "depends_on": ["opt_neutral"],
+                        "inputs": {"position_from_task": "opt_neutral"},
+                    }
+                ]
+            },
+        },
+    )
+    assert reply.status_code == 200, reply.text
+    task = reply.json()["plan"]["tasks"][4]
+    assert task["inputs"]["position"] is None
+    assert task["inputs"]["position_from_task"] == "opt_neutral"
+    assert api.post(path + "/tasks/vertical_energy/cards").status_code == 422
+
+
+@pytest.mark.parametrize("source", ["prior_result", "external_optimized"])
+def test_relabeling_starting_structure_without_explicit_result_pair_stays_blocked(api, source):
+    opt, consumer = _task("opt", "opt"), _task("sp", "energy")
+    consumer["depends_on"] = ["opt"]
+    saved = api.post(
+        "/v1/plans",
+        json={"question": "Optimize then energy", "goal": "other", "tasks": [opt, consumer]},
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    response = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "relabel coordinates",
+            "patch": {
+                "tasks": [
+                    {
+                        "task_id": "sp",
+                        "inputs": {"position_source": source, "position_from_task": "opt"},
+                    }
+                ]
+            },
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["plan"]["tasks"][1]["inputs"]["position"] is None
+    assert response.json()["statuses"][1]["state"] == "needs_input"
+    assert api.post(path + "/tasks/sp/cards").status_code == 422
+    # Numeric equality is allowed when the user explicitly supplies the pair.
+    response = api.put(
+        path,
+        json={
+            "expected_version": 2,
+            "change_reason": "actual result has same coordinates",
+            "patch": {
+                "tasks": [
+                    {
+                        "task_id": "sp",
+                        "inputs": {
+                            "position": consumer["inputs"]["position"],
+                            "position_unit": "angstrom",
+                        },
+                    }
+                ]
+            },
+        },
+    )
+    assert response.status_code == 200
+    assert api.post(path + "/tasks/sp/cards").status_code == 201
+
+
+def test_new_result_coordinates_do_not_inherit_previous_result_unit(api):
+    saved = api.post("/v1/plans", json=_result_workflow()).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    response = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "new result unit not given",
+            "patch": {
+                "tasks": [{"task_id": "anion_energy", "inputs": {"position": "H 0 0 0\nH 0 0 1.5"}}]
+            },
+        },
+    )
+    assert response.status_code == 200
+    task = response.json()["plan"]["tasks"][2]
+    assert task["inputs"]["position"] == "H 0 0 0\nH 0 0 1.5"
+    assert task["inputs"]["position_unit"] is None
+    assert api.post(path + "/tasks/anion_energy/cards").status_code == 422
+
+
+def test_descriptive_revision_reuses_same_card_without_new_database_row(api):
+    saved = api.post("/v1/plans", json=_result_workflow()).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    old = api.post(path + "/tasks/anion_energy/cards").json()
+    update = {
+        "task_id": "opt_anion",
+        "title": "Renamed optimization",
+        "notes": "New description",
+        "decision": {"rationale": "More explanation", "uncertainty": "No new scientific setting"},
+    }
+    reply = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "explanation only",
+            "patch": {"tasks": [update]},
+        },
+    )
+    assert reply.status_code == 200
+    assert reply.json()["plan"]["tasks"][2] == saved["plan"]["tasks"][2]
+    assert reply.json()["statuses"][2]["state"] == "card_ready"
+    card = api.post(path + "/tasks/anion_energy/cards").json()
+    assert card["card_id"] == old["card_id"]
+    assert card["version"] == 1
+    assert card["is_current_plan_version"] is False
+    assert card["is_applicable_to_current_plan"] is True
+    with sqlite3.connect(get_settings().workflow_db) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM cards").fetchone()[0] == 1
+    assert api.get(path + "?version=1").json()["plan"] == saved["plan"]
+
+
+@pytest.mark.parametrize("scientific_change", [False, True])
+def test_historical_view_card_flags_always_describe_actual_latest_plan(api, scientific_change):
+    saved = api.post(
+        "/v1/plans",
+        json={"question": "Single point", "goal": "other", "tasks": [_task("H2", "energy")]},
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    original = api.post(path + "/tasks/H2/cards").json()
+    update = (
+        {"inputs": {"position": "H 0 0 0\nH 0 0 0.8", "position_unit": "angstrom"}}
+        if scientific_change
+        else {"notes": "Description changed"}
+    )
+    revision = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "revise",
+            "patch": {"tasks": [{"task_id": "H2", **update}]},
+        },
+    )
+    assert revision.status_code == 200
+    historical = api.get(path + "?version=1").json()
+    assert historical["version"] == 1
+    assert historical["statuses"][0]["state"] == "card_ready"
+    card = historical["cards"][0]
+    assert card["card_id"] == original["card_id"]
+    assert card["is_current_plan_version"] is False
+    assert card["is_applicable_to_current_plan"] is (not scientific_change)
+    assert api.get(original["download_path"]).text == original["content"]
+
+
+def test_optimization_result_invalidation_reaches_descendants_independent_of_task_order(api):
+    first, second, energy = _task("first", "opt"), _task("second", "opt"), _task("energy", "energy")
+    for task, source in ((second, "first"), (energy, "second")):
+        task["depends_on"] = [source]
+        task["inputs"].update(position_source="prior_result", position_from_task=source)
+    saved = api.post(
+        "/v1/plans",
+        json={"question": "Refine then energy", "goal": "other", "tasks": [energy, second, first]},
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    revised = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "change first optimization",
+            "patch": {"tasks": [{"task_id": "first", "decision": {"basis": "def2-TZVP"}}]},
+        },
+    )
+    assert revised.status_code == 200
+    assert revised.json()["plan"]["tasks"][0]["inputs"]["position"] is None
+    assert revised.json()["plan"]["tasks"][1]["inputs"]["position"] is None
+    assert api.post(path + "/tasks/energy/cards").status_code == 422
+
+
+@pytest.mark.parametrize("mode", ["patch", "plan"])
+def test_invalid_source_revision_is_atomic(api, mode):
+    saved = api.post("/v1/plans", json=_result_workflow()).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    if mode == "patch":
+        revision = {
+            "patch": {
+                "tasks": [
+                    {"task_id": "anion_energy", "inputs": {"position_from_task": "opt_neutral"}}
+                ]
+            }
+        }
+    else:
+        body = deepcopy(saved["plan"])
+        body["tasks"][2]["inputs"]["position_from_task"] = "opt_neutral"
+        revision = {"plan": body}
+    response = api.put(
+        path, json={"expected_version": 1, "change_reason": "wrong source dependency", **revision}
+    )
+    assert response.status_code == 422
+    reopened = api.get(path).json()
+    assert reopened["version"] == 1
+    assert reopened["plan"] == saved["plan"]
+
+
+def test_partial_revision_can_add_and_remove_tasks_with_graph_validation(api):
+    saved = api.post(
+        "/v1/plans",
+        json={"question": "H2 energy", "goal": "other", "tasks": [_task("H2", "energy")]},
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    analysis = {
+        "task_id": "result",
+        "title": "Energy analysis",
+        "purpose": "Compare",
+        "kind": "analysis",
+        "depends_on": ["H2"],
+        "analysis_formula": "E(H2)",
+    }
+    added = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "Add analysis",
+            "patch": {"add_tasks": [analysis]},
+        },
+    )
+    assert added.status_code == 200, added.text
+    invalid = api.put(
+        path,
+        json={
+            "expected_version": 2,
+            "change_reason": "Break graph",
+            "patch": {"remove_task_ids": ["H2"]},
+        },
+    )
+    assert invalid.status_code == 422
+    assert api.get(path).json()["version"] == 2
+    removed = api.put(
+        path,
+        json={
+            "expected_version": 2,
+            "change_reason": "Remove analysis",
+            "patch": {"remove_task_ids": ["result"]},
+        },
+    )
+    assert removed.status_code == 200
+    assert [t["task_id"] for t in removed.json()["plan"]["tasks"]] == ["H2"]
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {},
+        {"tasks": [{"task_id": "missing", "notes": "new"}]},
+        {"tasks": [{"task_id": "H2", "notes": "a"}, {"task_id": "H2", "notes": "b"}]},
+        {"tasks": [{"task_id": "H2", "inputs": {"position_unit": "nanometer"}}]},
+        {"tasks": [{"task_id": "H2", "decision": {"source": "evidence", "supporting": []}}]},
+        {"tasks": [{"task_id": "H2", "title": None}]},
+        {"tasks": [{"task_id": "H2", "inputs": {"spin": 0}}]},
+        {"tasks": [{"task_id": "H2", "depends_on": ["H2"]}]},
+        {"tasks": [{"task_id": "H2", "question_display": "invented"}]},
+        {"tasks": [{"task_id": "H2", "notes": "changed"}], "remove_task_ids": ["H2"]},
+        {"add_tasks": [_task("H2", "energy")]},
+    ],
+)
+def test_invalid_partial_revision_is_atomic(api, patch):
+    saved = api.post(
+        "/v1/plans",
+        json={"question": "H2 energy", "goal": "other", "tasks": [_task("H2", "energy")]},
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    reply = api.put(
+        path, json={"expected_version": 1, "change_reason": "Invalid edit", "patch": patch}
+    )
+    assert reply.status_code == 422, reply.text
+    assert api.get(path).json() == saved
+
+
+def test_revision_requires_exactly_one_mode_and_rechecks_a_new_decision(api):
+    draft = {
+        "question": "No decision yet",
+        "goal": "other",
+        "tasks": [_task("H2", "energy", decision=False)],
+    }
+    saved = api.post("/v1/plans", json=draft).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    base = {"expected_version": 1, "change_reason": "Choose method"}
+    assert api.put(path, json=base).status_code == 422
+    assert (
+        api.put(path, json={**base, "plan": draft, "patch": {"question": "new"}}).status_code == 422
+    )
+    incomplete = {"tasks": [{"task_id": "H2", "decision": {"basis": "def2-TZVP"}}]}
+    assert api.put(path, json={**base, "patch": incomplete}).status_code == 422
+    decision = _task("H2", "energy")["decision"]
+    revised = api.put(
+        path, json={**base, "patch": {"tasks": [{"task_id": "H2", "decision": decision}]}}
+    )
+    assert revised.status_code == 200
+    assert revised.json()["statuses"][0]["state"] == "ready_for_card"
+
+
+def test_large_workflow_revision_changes_only_selected_tasks(api):
+    opt = _task("opt", "opt")
+    steps = []
+    for number in range(80):
+        task = _task(f"sp_{number}", "energy")
+        task["depends_on"] = ["opt"]
+        task["inputs"].update(
+            position=None,
+            position_unit=None,
+            position_source="prior_result",
+            position_from_task="opt",
+        )
+        task["notes"] = "Preserve the purpose and uncertainty of this comparison. " * 15
+        steps.append(task)
+    draft = {
+        "question": "Compare multiple final energy settings after optimization",
+        "goal": "optimization_single_point",
+        "tasks": [opt, *steps],
+    }
+    saved = api.post("/v1/plans", json=draft).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    revision = {
+        "expected_version": 1,
+        "change_reason": "Confirmed output and basis",
+        "patch": {
+            "tasks": [
+                {
+                    "task_id": "sp_37",
+                    "decision": {"basis": "def2-TZVP"},
+                    "inputs": {"position": "H 0 0 0\nH 0 0 1.4", "position_unit": "bohr"},
+                }
+            ]
+        },
+    }
+    # The model need not retransmit the surrounding 80 tasks and notes.
+    assert len(json.dumps(revision)) < len(json.dumps(saved["plan"])) / 100
+    reply = api.put(path, json=revision)
+    assert reply.status_code == 200, reply.text
+    after = reply.json()
+    assert len(after["plan"]["tasks"]) == 81
+    for before_task, after_task in zip(saved["plan"]["tasks"], after["plan"]["tasks"], strict=True):
+        if before_task["task_id"] != "sp_37":
+            assert after_task == before_task
+    assert after["statuses"][38]["state"] == "ready_for_card"
+    assert all(status["state"] == "needs_input" for status in after["statuses"][1:38])
+    assert api.post(path + "/tasks/sp_37/cards").json()["position_unit"] == "bohr"
+    assert api.get(path + "?version=1").json()["plan"] == saved["plan"]
+
+
+def test_partial_revision_replaces_lists_options_and_clears_a_nullable_decision(api):
+    task = _task("H2", "energy")
+    task["candidates"] = [{"xc": "PBE0", "rationale": "Alternative"}]
+    task["rest_options"] = {"ctrl": {"print_level": 2, "num_threads": 8}}
+    saved = api.post(
+        "/v1/plans",
+        json={
+            "question": "H2 energy",
+            "goal": "other",
+            "tasks": [task],
+            "assumptions": ["Original assumption"],
+        },
+    ).json()
+    path = f"/v1/plans/{saved['plan_id']}"
+    reply = api.put(
+        path,
+        json={
+            "expected_version": 1,
+            "change_reason": "Withdraw decision",
+            "patch": {
+                "assumptions": [],
+                "tasks": [
+                    {
+                        "task_id": "H2",
+                        "candidates": [],
+                        "decision": None,
+                        "rest_options": {"ctrl": {"num_threads": 4}},
+                    }
+                ],
+            },
+        },
+    )
+    assert reply.status_code == 200, reply.text
+    draft = reply.json()["plan"]
+    assert draft["assumptions"] == []
+    assert draft["tasks"][0]["candidates"] == []
+    assert draft["tasks"][0]["rest_options"] == {"ctrl": {"num_threads": 4}}
+    assert draft["tasks"][0]["inputs"] == saved["plan"]["tasks"][0]["inputs"]
+    assert reply.json()["statuses"][0]["state"] == "needs_decision"
+    assert api.post(path + "/tasks/H2/cards").status_code == 422
 
 
 def test_unintegrated_method_is_saved_without_claiming_rest_lacks_it(api: TestClient) -> None:
@@ -161,7 +849,8 @@ def test_units_required_and_persist_across_revisions_and_downloads(api: TestClie
 
 def test_skill_example_matches_backend_and_waits_for_result_unit(api: TestClient) -> None:
     skill = Path(__file__).resolve().parents[2] / "skills/aifs-molecular-planning/SKILL.md"
-    example = json.loads(re.search(r"```json\n(.*?)\n```", skill.read_text(), re.S)[1])
+    text = skill.read_text().split("## Plan contract example", 1)[1]
+    example = json.loads(re.search(r"```json\n(.*?)\n```", text, re.S)[1])
     created = api.post("/v1/plans", json=example)
     assert created.status_code == 201
     plan_id = created.json()["plan_id"]
@@ -216,7 +905,10 @@ def test_skill_example_matches_backend_and_waits_for_result_unit(api: TestClient
     ],
 )
 def test_experimental_ade_frequency_tasks_wait_and_keep_separate_energy_protocol(
-    api: TestClient, system: str, initial: str, result: str,
+    api: TestClient,
+    system: str,
+    initial: str,
+    result: str,
 ) -> None:
     tasks = []
     for species, charge, spin in [("anion", -1, 1), ("neutral", 0, 2)]:
@@ -241,9 +933,7 @@ def test_experimental_ade_frequency_tasks_wait_and_keep_separate_energy_protocol
                 position_from_task=opt["task_id"],
             )
             if suffix == "sp":
-                task["decision"].update(
-                    xc="wB97M-V", xc_parser="parse_xc", basis="aug-cc-pVTZ"
-                )
+                task["decision"].update(xc="wB97M-V", xc_parser="parse_xc", basis="aug-cc-pVTZ")
             else:
                 task["rest_options"] = {
                     "ctrl": {"analdrv_tasks": ["hessian"]},
@@ -307,10 +997,13 @@ def test_experimental_ade_frequency_tasks_wait_and_keep_separate_energy_protocol
     for task in tasks:
         if task.get("inputs", {}).get("position_source") == "prior_result":
             task["inputs"]["position_unit"] = "angstrom"
-    assert api.put(
-        f"/v1/plans/{plan_id}",
-        json={"expected_version": 2, "change_reason": "Result units confirmed", "plan": draft},
-    ).status_code == 200
+    assert (
+        api.put(
+            f"/v1/plans/{plan_id}",
+            json={"expected_version": 2, "change_reason": "Result units confirmed", "plan": draft},
+        ).status_code
+        == 200
+    )
     for species, polarized in [("anion", False), ("neutral", True)]:
         card_response = api.post(f"/v1/plans/{plan_id}/tasks/{species}_freq/cards")
         assert card_response.status_code == 201

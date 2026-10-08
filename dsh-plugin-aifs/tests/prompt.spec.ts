@@ -28,6 +28,18 @@ describe('AIFS system-prompt guidance', () => {
     expect(AIFS_PROMPT_TEXT).toContain('if no relevant source is found, keep the choice provisional')
   })
 
+  it('routes dependent calculations to internal workflows and restores only relevant details', () => {
+    expect(AIFS_PROMPT_TEXT).toContain('Independent calculations default to direct preparation')
+    expect(AIFS_PROMPT_TEXT).toContain('automatically create_aifs_plan once with a concise complete graph')
+    expect(AIFS_PROMPT_TEXT).toContain('Initial graph assembly still belongs to the model')
+    expect(AIFS_PROMPT_TEXT).toContain('Multiple unrelated files alone do not force a workflow')
+    expect(AIFS_PROMPT_TEXT).toContain('use task_id to inspect only relevant task details')
+    expect(AIFS_PROMPT_TEXT).toContain('normally submit patch only')
+    expect(AIFS_PROMPT_TEXT).toContain('preserve confirmed choices and ask only unresolved questions')
+    expect(AIFS_PROMPT_TEXT).toContain('read the saved workflow summary and relevant task details before retrying')
+    expect(AIFS_PROMPT_TEXT).not.toContain('saved multi-step plans are optional for user-requested')
+  })
+
   it('registers stable guidance and removes it on context disposal', async () => {
     const ctx = mountPlugin()
     expect(ctx.systemPrompt.sections()).toContainEqual({

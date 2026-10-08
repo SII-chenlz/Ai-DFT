@@ -1,3 +1,3 @@
 """AIFS FastAPI domain backend."""
 
-__version__ = "0.1.16"
+__version__ = "0.1.19"

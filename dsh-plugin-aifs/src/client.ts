@@ -1,5 +1,5 @@
 import type { InferValue } from '@deepseek-ai/dsh-tools'
-import type { REST_INPUT_SCHEMA, REST_RESPONSE_SCHEMA, VALIDATE_RESPONSE_SCHEMA, EVIDENCE_REQUEST_SCHEMA, EVIDENCE_RESPONSE_SCHEMA } from './generated/backend.ts'
+import type { REST_INPUT_SCHEMA, REST_RESPONSE_SCHEMA, PREPARE_INPUT_SCHEMA, PREPARE_RESPONSE_SCHEMA, VALIDATE_RESPONSE_SCHEMA, EVIDENCE_REQUEST_SCHEMA, EVIDENCE_RESPONSE_SCHEMA } from './generated/backend.ts'
 
 /**
  * HTTP client for the AIFS FastAPI backend.
@@ -64,6 +64,9 @@ export class AifsBackendResponseTooLargeError extends AifsBackendError {
 
 /** Request type inferred from the Python-generated contract. */
 export type GenerateRestInputArgs = InferValue<typeof REST_INPUT_SCHEMA>
+export type PrepareRestInputArgs = InferValue<typeof PREPARE_INPUT_SCHEMA>
+export type PreparedRestInputSuccess = InferValue<typeof PREPARE_RESPONSE_SCHEMA> & { ok: true }
+export type PrepareOutcome = PreparedRestInputSuccess | { ok: false; error: AifsDomainError }
 
 /** Backend domain error envelope (`{"error": {"code", "message"}}`). */
 export interface AifsDomainError {
@@ -188,6 +191,19 @@ export class AifsBackendClient {
     }
   }
 
+  /** Default card delivery: one backend call generates and independently validates. */
+  async prepare(request: PrepareRestInputArgs, signal: AbortSignal): Promise<PrepareOutcome> {
+    const result = await this.post('/v1/rest-inputs/prepare', request, signal)
+    if (result.kind === 'domain-error') {
+      return { ok: false, error: { code: result.code, message: result.message } }
+    }
+    const body = result.body as unknown as PreparedRestInputSuccess
+    if (body.validation?.valid !== true || typeof body.rest_input !== 'string' || typeof body.filename !== 'string') {
+      throw new AifsBackendError('AIFS card preparation returned no independently validated card', result.status)
+    }
+    return { ...body, ok: true }
+  }
+
   /**
    * Validate a complete card via POST /v1/rest-inputs/validate.
    *
@@ -265,6 +281,12 @@ export class AifsBackendClient {
       }
       if (response.ok) return { kind: 'ok', status: response.status, body }
       const envelope = readErrorEnvelope(body)
+      const errorCode = typeof body === 'object' && body !== null && !Array.isArray(body)
+        && typeof body.error === 'object' && body.error !== null && !Array.isArray(body.error)
+        ? body.error.code : undefined
+      if (errorCode === 'request_validation_error') {
+        throw new AifsBackendError(`AIFS backend request_validation_error (HTTP ${response.status}): ${JSON.stringify(body)}`, response.status)
+      }
       if (workflow && response.status >= 400 && response.status < 500) {
         const record = body as Record<string, JsonValue>
         const error = record?.error as Record<string, JsonValue> | undefined

@@ -113,6 +113,19 @@ class RestInputRequest(BaseModel):
         return value
 
 
+class PrepareRestInputRequest(RestInputRequest):
+    """Model-facing card preparation: scientific inputs must be explicit.
+
+    Legacy rendering defaults remain on RestInputRequest for API compatibility.
+    Providing values is not independently authenticated evidence of user consent.
+    """
+
+    position_unit: Literal["angstrom", "bohr"]
+    basis: str = Field(min_length=1, max_length=200)
+    charge: float
+    spin: int = Field(ge=1)
+
+
 class RestInputResponse(BaseModel):
     """Result of rendering a structured request into a REST TOML input card."""
 
@@ -160,3 +173,11 @@ class ValidateInputResponse(BaseModel):
     errors: list[ValidationIssue]
     warnings: list[ValidationIssue]
     parsed_sections: list[str]
+
+
+class PreparedRestInputResponse(RestInputResponse):
+    """An independently checked card, ready for DSH file export without a plan."""
+
+    filename: str
+    export_relative_path: str
+    validation: ValidateInputResponse

@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { setTimeout as delay } from 'node:timers/promises'
 import assert from 'node:assert/strict'
@@ -74,6 +74,20 @@ try {
   assert.equal(capabilities.keywords.pressure.unit, 'atm')
   assert(capabilities.methods.legacy.includes('SVWN'))
   assert(!capabilities.methods.legacy.includes('LDA'))
+  const direct = await ctx.tools.get('generate_rest_input').execute({
+    system_name: 'H2', position: 'H 0 0 0\nH 0 0 0.74', position_unit: 'angstrom',
+    charge: 0, spin: 1, xc: 'PBE', basis: 'def2-TZVP', job_type: 'energy',
+  }, execution)
+  assert.equal(direct.ok, true, JSON.stringify(direct))
+  assert.equal(direct.validation.valid, true)
+  assert.match(direct.filename, /^H2-energy-[0-9a-f]{12}\.in$/)
+  assert.equal((await ctx.tools.get('list_aifs_plans').execute({}, execution)).plans.length, 0)
+  assert.equal(direct.export_relative_path, `aifs-inputs/${direct.filename.slice(0, -3)}/${direct.filename}`)
+  const exported = join(dataDir, direct.export_relative_path)
+  await mkdir(dirname(exported), { recursive: true })
+  await writeFile(exported, direct.rest_input)
+  assert.equal(await readFile(exported, 'utf8'), direct.rest_input)
+  assert.equal((await ctx.tools.get('validate_rest_input').execute({ rest_input: direct.rest_input }, execution)).valid, true)
   const plan = await ctx.tools.get('create_aifs_plan').execute({ plan: {
     question: 'Verify bundled tool helper with H2', goal: 'other', tasks: [{
       task_id: 'h2', title: 'H2 energy', purpose: 'Get energy', kind: 'rest', job_type: 'energy', system_name: 'H2',
@@ -82,9 +96,18 @@ try {
     }],
   } }, execution)
   assert.equal(plan.ok, true, JSON.stringify(plan))
+  const planSummary = JSON.parse(ctx.tools.get('create_aifs_plan').output.render({}, plan)[0].text)
+  assert.equal(planSummary.plan_id, plan.plan_id)
+  assert.equal(planSummary.tasks[0].state, 'ready_for_card')
+  assert(!JSON.stringify(planSummary).includes('position'))
+  assert(!JSON.stringify(planSummary).includes('rationale'))
+  const taskDetail = JSON.parse(ctx.tools.get('get_aifs_plan').output.render({ task_id: 'h2' }, plan)[0].text)
+  assert.equal(taskDetail.task.inputs.position, plan.plan.tasks[0].inputs.position)
+  assert.equal(taskDetail.tasks, undefined)
   const card = await ctx.tools.get('generate_aifs_task_card').execute({ plan_id: plan.plan_id, task_id: 'h2' }, execution)
   assert.equal(card.ok, true, JSON.stringify(card))
   assert.equal(card.validation.valid, true)
+  assert.equal(card.export_relative_path, `aifs-inputs/plan-${plan.plan_id}/task-h2/${card.filename}`)
   assert.equal(card.position_unit_status, 'explicit')
   assert.equal(card.position_unit, 'angstrom')
   assert.equal(await (await fetch(card.download_url)).text(), card.content)
@@ -152,7 +175,7 @@ try {
     const reference = await readFile(join(skill.resourceBase.path, match[1]), 'utf8')
     assert(reference.trim().length > 0, `Unreadable bundled Skill reference: ${match[1]}`)
   }
-  const example = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(skill.content)[1])
+  const example = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(skill.content.slice(skill.content.indexOf('## Plan contract example')))[1])
   const optimizedPlan = await ctx.tools.get('create_aifs_plan').execute({ plan: example }, execution)
   assert.equal(optimizedPlan.ok, true, JSON.stringify(optimizedPlan))
   assert.deepEqual(optimizedPlan.statuses.map(task => task.state), ['ready_for_card', 'needs_input'])
@@ -161,10 +184,11 @@ try {
   assert(geometryCard.content.includes('xc = "PBE"'))
   const waitForResult = await ctx.tools.get('generate_aifs_task_card').execute({ plan_id: optimizedPlan.plan_id, task_id: 'sp_H2' }, execution)
   assert.equal(waitForResult.ok, false)
-  example.tasks[1].inputs.position = 'H 0 0 0\nH 0 0 1.4'
-  example.tasks[1].inputs.position_unit = 'bohr'
-  const revision = await ctx.tools.get('revise_aifs_plan').execute({ plan_id: optimizedPlan.plan_id, expected_version: 1, change_reason: 'User provided optimized coordinates in Bohr', plan: example }, execution)
+  const revision = await ctx.tools.get('revise_aifs_plan').execute({ plan_id: optimizedPlan.plan_id, expected_version: 1, change_reason: 'User provided optimized coordinates in Bohr', patch: { tasks: [{ task_id: 'sp_H2', inputs: { position: 'H 0 0 0\nH 0 0 1.4', position_unit: 'bohr' } }] } }, execution)
   assert.equal(revision.ok, true, JSON.stringify(revision))
+  assert.deepEqual(revision.plan.tasks[0], optimizedPlan.plan.tasks[0])
+  assert.deepEqual(revision.plan.tasks[1].decision, optimizedPlan.plan.tasks[1].decision)
+  assert.equal(revision.plan.tasks[1].inputs.position_from_task, 'opt_H2')
   const optimizedCard = await ctx.tools.get('generate_aifs_task_card').execute({ plan_id: optimizedPlan.plan_id, task_id: 'sp_H2' }, execution)
   assert.equal(optimizedCard.position_unit, 'bohr')
   assert.equal(optimizedCard.validation.valid, true)
@@ -204,7 +228,7 @@ try {
   await failed.dispose()
   assert.equal(ctx.tools.schemas().length, 0)
   const report = { realDshServices: 'passed', hostKind: installedPackages ? 'installed-desktop' : 'source', dshVersion: hostManifest.version, aifsVersion: packageManifest.version, toolCount: 10, skill: skill.name,
-    checks: ['compiled-host-plugin-no-peer-links', 'tool-schemas-before-ready', 'call-waits-for-owned-startup', 'schemas-retained-on-startup-failure', 'explicit-retry-recovers-same-tools', 'per-task-geometry-and-double-hybrid-energy-methods', 'model-prompt-tool-schemas', 'create-plan-tool', 'nested-plan-schema', 'rest-capability-query', 'frequency-thermo-task-card', 'explicit-lda-functional-card', 'open-shell-rsh-analdrv-card', 'response-tddft-card', 'multipole-card', 'rrs-pbc-card', 'block-unimplemented-rsh-excited-gradient', 'advanced-card-download', 'skill-example', 'explicit-angstrom-and-bohr', 'wait-for-optimized-result', 'revise-plan-tool', 'task-card-tool', 'download', 'card-after-reload', 'real-cordis', 'real-subprocess', 'real-skill-registry', 'enable', 'disable', 'reload', 'retry-while-ready', 'route-disposal', 'backend-exit'],
+    checks: ['compiled-host-plugin-no-peer-links', 'tool-schemas-before-ready', 'call-waits-for-owned-startup', 'schemas-retained-on-startup-failure', 'explicit-retry-recovers-same-tools', 'per-task-geometry-and-double-hybrid-energy-methods', 'model-prompt-tool-schemas', 'create-plan-tool', 'compact-model-summary', 'single-task-detail', 'direct-card-without-plan', 'nested-plan-schema', 'rest-capability-query', 'frequency-thermo-task-card', 'explicit-lda-functional-card', 'open-shell-rsh-analdrv-card', 'response-tddft-card', 'multipole-card', 'rrs-pbc-card', 'block-unimplemented-rsh-excited-gradient', 'advanced-card-download', 'skill-example', 'explicit-angstrom-and-bohr', 'wait-for-optimized-result', 'revise-plan-tool', 'task-card-tool', 'download', 'card-after-reload', 'real-cordis', 'real-subprocess', 'real-skill-registry', 'enable', 'disable', 'reload', 'retry-while-ready', 'route-disposal', 'backend-exit'],
     desktopUi: 'not tested', recordedAt: new Date().toISOString() }
   await mkdir(join(root, '.local'), { recursive: true })
   await writeFile(join(root, installedPackages ? '.local/installed-desktop-host-verification.json' : '.local/desktop-host-verification.json'), JSON.stringify(report, null, 2) + '\n')

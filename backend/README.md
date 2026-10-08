@@ -1,15 +1,13 @@
-# AIFS Backend
+# AIFS 后端
 
-Python FastAPI 领域后端，负责 REST 量子化学软件的输入卡领域核心：
+Python FastAPI 服务负责：
 
-- REST 方法/基组/色散/关键词目录（版本化数据）；
-- 结构化请求 → REST TOML 输入卡渲染；
-- 与渲染器完全独立的 TOML 输入卡校验器；
-- 健康检查与 REST 输入 API。
-- Record-Builder 文献记录导入、轻量关系边和来源可追溯检索；当前不是完整的科研知识图谱。
-- 独立 SQLite 工作流库：版本化任务计划、方法决策、输入卡与下载。
+- 保存计划、方法选择、引用和历史输入卡。
+- 检查参数、依赖及优化结构来源。
+- 生成 REST TOML 输入，调用独立校验器检查。
+- 导入和检索本地文献记录；目前不是完整知识图谱。
 
-本目录不包含 Harness 会话循环、Web UI、TypeScript 插件、推荐算法、RAG 或计算执行器。
+模型负责科学方案；后端不执行 REST，也不自动计算分析公式。
 
 ## 环境与安装
 
@@ -20,12 +18,7 @@ Python FastAPI 领域后端，负责 REST 量子化学软件的输入卡领域�
 
 ## 运行与测试
 
-```bash
-pytest backend/tests -q          # 单元/接口测试
-python -m ruff check backend     # 静态风格检查
-python -m mypy backend/src       # 类型检查（在 backend/ 目录内运行时使用严格配置）
-uvicorn aifs.api:app             # 启动 API（默认 127.0.0.1:8000）
-```
+在仓库根目录运行 `uvicorn aifs.api:app` 可单独调试 API。桌面包由插件启动后端。完整测试与打包命令见 [脚本文档](../scripts/README.md#更新版本与检查)。
 
 ## API
 
@@ -34,6 +27,7 @@ uvicorn aifs.api:app             # 启动 API（默认 127.0.0.1:8000）
 | GET | `/health` | 服务状态与实际 AIFS 版本 |
 | GET | `/v1/rest-capabilities` | 当前输入契约、方法与剩余项；`?section=thermo` 等查询字段类型与单位 |
 | POST | `/v1/rest-inputs` | 渲染 REST TOML 输入卡；领域设置不兼容返回 422 与稳定 JSON 错误；部署未配置基组池返回 500（`configuration_error`） |
+| POST | `/v1/rest-inputs/prepare` | 独立计算直接出卡：显式科学参数，生成并独立校验，返回正文、文件名和校验结果；不创建计划 |
 | POST | `/v1/rest-inputs/validate` | 独立校验完整输入卡；`valid=false` 是 200 领域结果 |
 | POST | `/v1/evidence/import` | 导入 Record-Builder JSON/JSONL 到 SQLite 证据库 |
 | POST | `/v1/evidence/search` | 按体系和任务召回带 DOI/页码的文献证据 |
@@ -43,9 +37,43 @@ uvicorn aifs.api:app             # 启动 API（默认 127.0.0.1:8000）
 | GET | `/v1/plans/{plan_id}/cards/{card_id}` | 读取历史卡片及其来源版本 |
 | GET | `/v1/plans/{plan_id}/cards/{card_id}/download` | 下载 `.in` 文件 |
 
-方法比较由 DSH 中的模型进行，后端保存决策及其证据。
+### 独立计算直接出卡，多步计算保存流程
 
-计划库路径由 `AIFS_WORKFLOW_DB` 配置，默认 `data/aifs-workflow.sqlite3`，与 `AIFS_EVIDENCE_DB` 分开。计划状态由后端计算，草案不得提交 `status`；缺坐标、电荷、自旋、方法决策或优化结果时不会生成正式卡。每次修订保存完整新版本，旧卡保持绑定到原版本。文献决策可引用已导入的 `record_id`，也可引用带 URL 和标题的网页来源。引用可用 `claim_type=method_used|comparative_benchmark|author_recommendation|other` 区分证据性质；旧计划未填该字段仍可读取。网页引用仅保存来源，不自动导入本地知识图谱，仍需研究者核对。仅有“论文使用某方法”时，后端在决策不确定性中提示不能证明相对优选。
+`generate_rest_input` 工具使用 `/v1/rest-inputs/prepare`，必填 `system_name`、`position`、`position_unit`、`charge`、`spin`、`xc`、`job_type`、`basis`。坐标单位、电荷、自旋和基组不能省略或为 null；不再从默认值猜这些科学参数。解析器和高级选项仍按当前 REST 能力填写。
+
+独立计算使用此入口；有前置结果或能量组合时先保存 `PlanDraft`，后续用 `patch`。用户要求时也可保存单步计算。
+
+直接出卡、保存卡及卡片摘要返回 `export_relative_path`。路径在 `aifs-inputs/` 下：直接卡按文件名去掉后缀分目录，保存卡按 `plan-{plan_id}/task-{task_id}/` 分目录；文件名保留原样。它是工作区相对路径，后端不写用户工作区，由 DSH 文件工具导出。无需数据库升级；历史卡读取时也会返回路径。
+
+后端生成后立即调用独立 TOML 校验器。校验失败返回 422 `card_validation_failed`，不返回成功卡片。成功返回 `rest_input`、安全的 `.in` 文件名 `filename` 和 `validation`，由 DSH 文件工具导出；不创建数据库记录或下载链接。单独校验工具仍用于用户已有或编辑过的卡片。旧 `/v1/rest-inputs` 只保留渲染 API 的兼容性，桌面模型默认不调用该旧入口。
+
+`source=user` 等来源字段由模型填写，不能独立证明真实确认。输入检查不证明科学方案正确。
+
+计划库由 `AIFS_WORKFLOW_DB` 指定，默认 `data/aifs-workflow.sqlite3`，证据库由 `AIFS_EVIDENCE_DB` 指定。状态由后端计算，不接受草案 `status`。计划可保存未知参数，但缺坐标、单位、电子态、方法或必需优化结构时不出卡。
+
+每次修订保存完整快照，历史卡不改。引用支持本地 `record_id` 或网页 URL／标题；`claim_type` 区分方法使用、对比基准、作者推荐和其他证据。网页引用不自动导入本地库，“论文使用某方法”不证明它更准确。
+
+### 局部修订计划
+
+`PUT /v1/plans/{plan_id}` 可以只提交修改的字段。例如，为已存在的 `sp` 任务换基组：
+
+```json
+{
+  "expected_version": 1,
+  "change_reason": "用户确认新的基组",
+  "patch": {"tasks": [{"task_id": "sp", "decision": {"basis": "def2-TZVPP"}}]}
+}
+```
+
+- `patch.tasks` 按已有任务 ID 更新，不是替换整个任务列表。省略字段保留原值，明确填 `null` 才清空允许为空的字段。
+- `inputs`、`decision` 按字段合并；其他列表和字典整项替换，包括 `depends_on`、证据列表和 `rest_options`。新建方法决策需要完整必填字段。
+- `patch.add_tasks` 接收完整的新任务；`patch.remove_task_ids` 删除指定任务。重复或不存在的 ID、删除后留下无效依赖均拒绝。
+- 原有 `plan` 完整替换方式继续可用。一次请求只能提供 `patch` 或 `plan` 之一，此条件由后端执行。
+- 在同一写入事务中核对版本、合并、完整校验和保存。版本冲突返回 409；参数或依赖无效返回 422，原记录不变。历史计划和卡片正文不改。
+- 修改上游优化输入或设置后，沿用其旧结果的下游会清空结果坐标和单位并恢复等待。补回或替换一份优化结果时，模型应在同一 patch 中更新使用它的各个任务；未同步更新的消费者不继续沿用旧结构。后端不验证结果记录是否来自真实计算。
+- 卡片保留原始 `version`，另用 `is_applicable_to_current_plan` 表示当前适用性。当前任务满足出卡条件，且生成的输入正文与旧卡相同时，可复用旧卡；`is_current_plan_version` 只表示它是否来自最新版本，不能替代适用性判断。
+
+字段见 `workflow_models.py` 的 `PlanPatch`／`PlanRevisionRequest`，合并入口为 `WorkflowStore.revise`。DSH JSON 解析失败时，请求尚未到达后端。
 
 ## 文献证据检索
 
@@ -62,7 +90,7 @@ python -m aifs.evidence_cli search \
 
 ## REST 规则来源
 
-基本目录来自官方 README，扩展输入按解析代码核对：
+依据官方 README 与对应解析代码：
 
 - 来源：https://gitee.com/restgroup/rest/blob/master/README.md
 - 核对日期：2026-10-04；源码提交 `6fa7f3b0b6476fa533dfc38af8b8505730713ac6`。
@@ -82,6 +110,7 @@ python -m aifs.evidence_cli search \
 
 ## 已知限制
 
+- 后端没有统一的能量、ZPE 或波函数结果接口；分析任务保存公式，不自动计算。
 - REST 官方 README 未明确 MP2 是否允许经验色散：当前仅对双杂化/RPA 类方法禁止色散，MP2 + 色散被允许（目录与测试中固化此决定）。
 - `[geom] unit` 接受 `angstrom|bohr`，省略时提示单位未记录。
 - 校验器不检查 `basis_path` 是否真实存在于部署文件系统（输入卡校验与部署环境检查分离）。
@@ -95,7 +124,7 @@ python -m aifs.evidence_cli search \
 
 后端完整测试包含 FAISS 持久化测试，安装 `.[dev,retrieval-test]` 后运行。`retrieval-test` 只提供测试所需 FAISS 与 numpy，不要求下载 sentence-transformers 模型；桌面运行包不依赖这组组件。
 
-## 坐标单位与历史兼容（2026-10-03）
+## 坐标单位与历史兼容
 
 - REST `[geom] unit` 支持 `angstrom` 和 `bohr`，来源为上述官方 README 的 geom 章节，单独核对日期见 `GEOMETRY_SOURCE_READ_DATE`。
 - `TaskInputs.position_unit` 可为 null，以便先保存不完整计划；null 阻止出卡。优化结果必须带结果自身的单位。

@@ -597,374 +597,99 @@ export const PLAN_REVISION_SCHEMA = {
       "required": true
     },
     "plan": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "question": {
-          "type": "string",
-          "required": true
-        },
-        "goal": {
-          "type": "string",
-          "enum": [
-            "reaction_energy",
-            "binding_energy",
-            "optimization_single_point",
-            "force",
-            "dipole",
-            "other"
-          ],
-          "required": true
-        },
-        "tasks": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "task_id": {
-                "type": "string",
-                "required": true
-              },
-              "title": {
-                "type": "string",
-                "required": true
-              },
-              "purpose": {
-                "type": "string",
-                "required": true
-              },
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "rest",
-                  "analysis",
-                  "unsupported"
-                ],
-                "required": true
-              },
-              "depends_on": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "system_name": {
-                "oneOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "job_type": {
-                "oneOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "rest_options": {
-                "type": "object",
-                "additionalProperties": true
-              },
-              "analysis_formula": {
-                "oneOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "inputs": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "type": "string",
+              "required": true
+            },
+            "goal": {
+              "type": "string",
+              "enum": [
+                "reaction_energy",
+                "binding_energy",
+                "optimization_single_point",
+                "force",
+                "dipole",
+                "other"
+              ],
+              "required": true
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                  "position": {
-                    "oneOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                  "task_id": {
+                    "type": "string",
+                    "required": true
                   },
-                  "position_unit": {
-                    "oneOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "angstrom",
-                          "bohr"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                  "title": {
+                    "type": "string",
+                    "required": true
                   },
-                  "position_source": {
-                    "oneOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "user",
-                          "external_optimized",
-                          "prior_result"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                  "purpose": {
+                    "type": "string",
+                    "required": true
                   },
-                  "position_from_task": {
-                    "oneOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "rest",
+                      "analysis",
+                      "unsupported"
+                    ],
+                    "required": true
                   },
-                  "charge": {
-                    "oneOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "charge_source": {
-                    "oneOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "user",
-                          "external"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "spin": {
-                    "oneOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "spin_source": {
-                    "oneOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "user",
-                          "external"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                }
-              },
-              "candidates": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "properties": {
-                    "xc": {
-                      "type": "string",
-                      "required": true
-                    },
-                    "basis": {
-                      "oneOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "rationale": {
-                      "type": "string",
-                      "required": true
-                    },
-                    "supporting": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "source": {
-                            "type": "string",
-                            "enum": [
-                              "local",
-                              "web"
-                            ],
-                            "required": true
-                          },
-                          "claim_type": {
-                            "oneOf": [
-                              {
-                                "type": "string",
-                                "enum": [
-                                  "method_used",
-                                  "comparative_benchmark",
-                                  "author_recommendation",
-                                  "other"
-                                ]
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "record_id": {
-                            "oneOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "url": {
-                            "oneOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "title": {
-                            "oneOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "note": {
-                            "type": "string",
-                            "required": true
-                          }
-                        }
-                      }
-                    },
-                    "opposing": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "properties": {
-                          "source": {
-                            "type": "string",
-                            "enum": [
-                              "local",
-                              "web"
-                            ],
-                            "required": true
-                          },
-                          "claim_type": {
-                            "oneOf": [
-                              {
-                                "type": "string",
-                                "enum": [
-                                  "method_used",
-                                  "comparative_benchmark",
-                                  "author_recommendation",
-                                  "other"
-                                ]
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "record_id": {
-                            "oneOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "url": {
-                            "oneOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "title": {
-                            "oneOf": [
-                              {
-                                "type": "string"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
-                          "note": {
-                            "type": "string",
-                            "required": true
-                          }
-                        }
-                      }
+                  "depends_on": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
                     }
-                  }
-                }
-              },
-              "decision": {
-                "oneOf": [
-                  {
+                  },
+                  "system_name": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "job_type": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "rest_options": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "analysis_formula": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "inputs": {
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
-                      "xc": {
-                        "type": "string",
-                        "required": true
-                      },
-                      "xc_parser": {
-                        "type": "string",
-                        "enum": [
-                          "legacy",
-                          "parse_xc"
-                        ]
-                      },
-                      "basis": {
+                      "position": {
                         "oneOf": [
                           {
                             "type": "string"
@@ -974,14 +699,13 @@ export const PLAN_REVISION_SCHEMA = {
                           }
                         ]
                       },
-                      "empirical_dispersion": {
+                      "position_unit": {
                         "oneOf": [
                           {
                             "type": "string",
                             "enum": [
-                              "d3",
-                              "d3bj",
-                              "d4"
+                              "angstrom",
+                              "bohr"
                             ]
                           },
                           {
@@ -989,20 +713,22 @@ export const PLAN_REVISION_SCHEMA = {
                           }
                         ]
                       },
-                      "source": {
-                        "type": "string",
-                        "enum": [
-                          "user",
-                          "evidence",
-                          "provisional"
-                        ],
-                        "required": true
+                      "position_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external_optimized",
+                              "prior_result"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      "rationale": {
-                        "type": "string",
-                        "required": true
-                      },
-                      "uncertainty": {
+                      "position_from_task": {
                         "oneOf": [
                           {
                             "type": "string"
@@ -1012,169 +738,1582 @@ export const PLAN_REVISION_SCHEMA = {
                           }
                         ]
                       },
-                      "supporting": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "properties": {
-                            "source": {
-                              "type": "string",
-                              "enum": [
-                                "local",
-                                "web"
-                              ],
-                              "required": true
+                      "charge": {
+                        "oneOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "charge_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spin": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spin_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "xc": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "basis": {
+                          "oneOf": [
+                            {
+                              "type": "string"
                             },
-                            "claim_type": {
-                              "oneOf": [
-                                {
-                                  "type": "string",
-                                  "enum": [
-                                    "method_used",
-                                    "comparative_benchmark",
-                                    "author_recommendation",
-                                    "other"
-                                  ]
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "record_id": {
-                              "oneOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "url": {
-                              "oneOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "title": {
-                              "oneOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "note": {
-                              "type": "string",
-                              "required": true
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rationale": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "supporting": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "local",
+                                  "web"
+                                ],
+                                "required": true
+                              },
+                              "claim_type": {
+                                "oneOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "method_used",
+                                      "comparative_benchmark",
+                                      "author_recommendation",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "record_id": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "title": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "required": true
+                              }
                             }
                           }
-                        }
-                      },
-                      "opposing": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "properties": {
-                            "source": {
-                              "type": "string",
-                              "enum": [
-                                "local",
-                                "web"
-                              ],
-                              "required": true
-                            },
-                            "claim_type": {
-                              "oneOf": [
-                                {
-                                  "type": "string",
-                                  "enum": [
-                                    "method_used",
-                                    "comparative_benchmark",
-                                    "author_recommendation",
-                                    "other"
-                                  ]
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "record_id": {
-                              "oneOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "url": {
-                              "oneOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "title": {
-                              "oneOf": [
-                                {
-                                  "type": "string"
-                                },
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            },
-                            "note": {
-                              "type": "string",
-                              "required": true
+                        },
+                        "opposing": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "local",
+                                  "web"
+                                ],
+                                "required": true
+                              },
+                              "claim_type": {
+                                "oneOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "method_used",
+                                      "comparative_benchmark",
+                                      "author_recommendation",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "record_id": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "title": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "required": true
+                              }
                             }
                           }
                         }
                       }
                     }
                   },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "notes": {
-                "oneOf": [
-                  {
-                    "type": "string"
+                  "decision": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "xc": {
+                            "type": "string",
+                            "required": true
+                          },
+                          "xc_parser": {
+                            "type": "string",
+                            "enum": [
+                              "legacy",
+                              "parse_xc"
+                            ]
+                          },
+                          "basis": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "empirical_dispersion": {
+                            "oneOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "d3",
+                                  "d3bj",
+                                  "d4"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "evidence",
+                              "provisional"
+                            ],
+                            "required": true
+                          },
+                          "rationale": {
+                            "type": "string",
+                            "required": true
+                          },
+                          "uncertainty": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "supporting": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "local",
+                                    "web"
+                                  ],
+                                  "required": true
+                                },
+                                "claim_type": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "method_used",
+                                        "comparative_benchmark",
+                                        "author_recommendation",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "record_id": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            }
+                          },
+                          "opposing": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "local",
+                                    "web"
+                                  ],
+                                  "required": true
+                                },
+                                "claim_type": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "method_used",
+                                        "comparative_benchmark",
+                                        "author_recommendation",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "record_id": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
-                  {
-                    "type": "null"
+                  "notes": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
-                ]
+                }
+              },
+              "required": true
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
               }
             }
-          },
-          "required": true
-        },
-        "assumptions": {
-          "type": "array",
-          "items": {
-            "type": "string"
           }
+        },
+        {
+          "type": "null"
         }
-      },
-      "required": true
+      ]
+    },
+    "patch": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "type": "string"
+            },
+            "goal": {
+              "type": "string",
+              "enum": [
+                "reaction_energy",
+                "binding_energy",
+                "optimization_single_point",
+                "force",
+                "dipole",
+                "other"
+              ]
+            },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "rest",
+                      "analysis",
+                      "unsupported"
+                    ]
+                  },
+                  "depends_on": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "system_name": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "job_type": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "rest_options": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "analysis_formula": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "inputs": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "position": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position_unit": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "angstrom",
+                              "bohr"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external_optimized",
+                              "prior_result"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position_from_task": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "charge": {
+                        "oneOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "charge_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spin": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spin_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "xc": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "basis": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rationale": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "supporting": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "local",
+                                  "web"
+                                ],
+                                "required": true
+                              },
+                              "claim_type": {
+                                "oneOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "method_used",
+                                      "comparative_benchmark",
+                                      "author_recommendation",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "record_id": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "title": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "required": true
+                              }
+                            }
+                          }
+                        },
+                        "opposing": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "local",
+                                  "web"
+                                ],
+                                "required": true
+                              },
+                              "claim_type": {
+                                "oneOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "method_used",
+                                      "comparative_benchmark",
+                                      "author_recommendation",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "record_id": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "title": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "required": true
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "decision": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "xc": {
+                            "type": "string"
+                          },
+                          "xc_parser": {
+                            "type": "string",
+                            "enum": [
+                              "legacy",
+                              "parse_xc"
+                            ]
+                          },
+                          "basis": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "empirical_dispersion": {
+                            "oneOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "d3",
+                                  "d3bj",
+                                  "d4"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "evidence",
+                              "provisional"
+                            ]
+                          },
+                          "rationale": {
+                            "type": "string"
+                          },
+                          "uncertainty": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "supporting": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "local",
+                                    "web"
+                                  ],
+                                  "required": true
+                                },
+                                "claim_type": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "method_used",
+                                        "comparative_benchmark",
+                                        "author_recommendation",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "record_id": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            }
+                          },
+                          "opposing": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "local",
+                                    "web"
+                                  ],
+                                  "required": true
+                                },
+                                "claim_type": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "method_used",
+                                        "comparative_benchmark",
+                                        "author_recommendation",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "record_id": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "add_tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "task_id": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "title": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "rest",
+                      "analysis",
+                      "unsupported"
+                    ],
+                    "required": true
+                  },
+                  "depends_on": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "system_name": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "job_type": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "rest_options": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "analysis_formula": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "inputs": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "position": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position_unit": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "angstrom",
+                              "bohr"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external_optimized",
+                              "prior_result"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "position_from_task": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "charge": {
+                        "oneOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "charge_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spin": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spin_source": {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "external"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "xc": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "basis": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rationale": {
+                          "type": "string",
+                          "required": true
+                        },
+                        "supporting": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "local",
+                                  "web"
+                                ],
+                                "required": true
+                              },
+                              "claim_type": {
+                                "oneOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "method_used",
+                                      "comparative_benchmark",
+                                      "author_recommendation",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "record_id": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "title": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "required": true
+                              }
+                            }
+                          }
+                        },
+                        "opposing": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "local",
+                                  "web"
+                                ],
+                                "required": true
+                              },
+                              "claim_type": {
+                                "oneOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "method_used",
+                                      "comparative_benchmark",
+                                      "author_recommendation",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "record_id": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "title": {
+                                "oneOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "required": true
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "decision": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "xc": {
+                            "type": "string",
+                            "required": true
+                          },
+                          "xc_parser": {
+                            "type": "string",
+                            "enum": [
+                              "legacy",
+                              "parse_xc"
+                            ]
+                          },
+                          "basis": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "empirical_dispersion": {
+                            "oneOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "d3",
+                                  "d3bj",
+                                  "d4"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "evidence",
+                              "provisional"
+                            ],
+                            "required": true
+                          },
+                          "rationale": {
+                            "type": "string",
+                            "required": true
+                          },
+                          "uncertainty": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "supporting": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "local",
+                                    "web"
+                                  ],
+                                  "required": true
+                                },
+                                "claim_type": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "method_used",
+                                        "comparative_benchmark",
+                                        "author_recommendation",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "record_id": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            }
+                          },
+                          "opposing": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "source": {
+                                  "type": "string",
+                                  "enum": [
+                                    "local",
+                                    "web"
+                                  ],
+                                  "required": true
+                                },
+                                "claim_type": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "method_used",
+                                        "comparative_benchmark",
+                                        "author_recommendation",
+                                        "other"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "record_id": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "url": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "title": {
+                                  "oneOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "required": true
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "notes": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "remove_task_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   }
 } as const satisfies ValueSchemaSpec
@@ -1288,6 +2427,112 @@ export const REST_INPUT_SCHEMA = {
   }
 } as const satisfies ValueSchemaSpec
 
+export const PREPARE_INPUT_SCHEMA = {
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "system_name": {
+      "type": "string",
+      "required": true
+    },
+    "position": {
+      "type": "string",
+      "required": true
+    },
+    "position_unit": {
+      "type": "string",
+      "enum": [
+        "angstrom",
+        "bohr"
+      ],
+      "required": true
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "energy",
+        "opt",
+        "force",
+        "numerical dipole"
+      ],
+      "required": true
+    },
+    "xc": {
+      "type": "string",
+      "required": true
+    },
+    "xc_parser": {
+      "type": "string",
+      "enum": [
+        "legacy",
+        "parse_xc"
+      ]
+    },
+    "rest_options": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "basis": {
+      "type": "string",
+      "required": true
+    },
+    "charge": {
+      "type": "number",
+      "required": true
+    },
+    "spin": {
+      "type": "integer",
+      "required": true
+    },
+    "spin_polarization": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "empirical_dispersion": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "d3",
+            "d3bj",
+            "d4"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "print_level": {
+      "type": "integer"
+    },
+    "num_threads": {
+      "type": "integer"
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "cube_orb",
+          "dipole",
+          "fchk",
+          "force",
+          "force_for_ghost_point_charges",
+          "geometry",
+          "molden"
+        ]
+      }
+    }
+  }
+} as const satisfies ValueSchemaSpec
+
 export const VALIDATE_INPUT_SCHEMA = {
   "type": "object",
   "additionalProperties": false,
@@ -1323,6 +2568,158 @@ export const REST_RESPONSE_SCHEMA = {
       "type": "array",
       "items": {
         "type": "string"
+      },
+      "required": true
+    }
+  }
+} as const satisfies ValueSchemaSpec
+
+export const PREPARE_RESPONSE_SCHEMA = {
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "rest_input": {
+      "type": "string",
+      "required": true
+    },
+    "effective_settings": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": true
+    },
+    "defaults_applied": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "required": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "required": true
+    },
+    "filename": {
+      "type": "string",
+      "required": true
+    },
+    "export_relative_path": {
+      "type": "string",
+      "required": true
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "valid": {
+          "type": "boolean",
+          "required": true
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "required": true
+              },
+              "message": {
+                "type": "string",
+                "required": true
+              },
+              "section": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "field": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "line": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "required": true
+              },
+              "message": {
+                "type": "string",
+                "required": true
+              },
+              "section": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "field": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "line": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parsed_sections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "required": true
+        }
       },
       "required": true
     }

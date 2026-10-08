@@ -2,12 +2,19 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { compileValue, validateValue } from './fixtures/dsh-tools.ts'
 import { PLAN_DRAFT_SCHEMA } from '../src/plan-schema.ts'
+import { PREPARE_INPUT_SCHEMA, PLAN_REVISION_SCHEMA } from '../src/generated/backend.ts'
 
 const raw = readFileSync(new URL('../../skills/aifs-molecular-planning/SKILL.md', import.meta.url), 'utf8')
-const example = () => JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(raw)![1]!)
+const example = () => JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(raw.slice(raw.indexOf('## Plan contract example')))![1]!)
 const schema = compileValue(PLAN_DRAFT_SCHEMA)
 
 describe('model-facing plan contract', () => {
+  it('accepts the direct and compact revision examples shipped in the Skill', () => {
+    const direct = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(raw.slice(raw.indexOf('### Direct card example')))![1]!)
+    expect(validateValue(compileValue(PREPARE_INPUT_SCHEMA), direct, '')).toEqual([])
+    const { plan_id: _id, ...revision } = JSON.parse(/```json\r?\n([\s\S]*?)\r?\n```/.exec(raw.slice(raw.indexOf('### Compact revision example')))![1]!)
+    expect(validateValue(compileValue(PLAN_REVISION_SCHEMA), revision, '')).toEqual([])
+  })
   it('accepts the shipped Skill example and a backend-expanded draft with nulls', () => {
     const plan = example()
     expect(validateValue(schema, plan, 'plan')).toEqual([])

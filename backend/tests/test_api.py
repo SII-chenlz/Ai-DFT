@@ -1,5 +1,6 @@
 """Tests for the FastAPI application in aifs.api."""
 
+from pathlib import PurePosixPath
 from typing import Any
 
 import pytest
@@ -17,6 +18,98 @@ def test_health_endpoint() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "aifs-api", "version": __version__}
+
+
+def test_prepare_card_without_a_plan_validates_and_returns_an_attachment_name(
+    request_payload, tmp_path, monkeypatch
+):
+    database = tmp_path / "unused-workflow.sqlite3"
+    monkeypatch.setenv("AIFS_WORKFLOW_DB", str(database))
+    get_settings.cache_clear()
+    payload = {**request_payload, "charge": 0, "spin": 1, "basis": "def2-TZVP"}
+    response = client.post("/v1/rest-inputs/prepare", json=payload)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["validation"]["valid"] is True
+    assert body["validation"]["errors"] == []
+    assert body["filename"].startswith("water-energy-") and body["filename"].endswith(".in")
+    assert tomllib.loads(body["rest_input"])["geom"]["unit"] == "angstrom"
+    assert not database.exists()
+
+
+@pytest.mark.parametrize("field", ["position_unit", "charge", "spin", "basis"])
+@pytest.mark.parametrize("value", ["omitted", None])
+def test_prepare_card_rejects_missing_scientific_parameters(request_payload, field, value):
+    payload = {**request_payload, "charge": 0, "spin": 1, "basis": "def2-TZVP"}
+    if value == "omitted":
+        payload.pop(field)
+    else:
+        payload[field] = value
+    response = client.post("/v1/rest-inputs/prepare", json=payload)
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["code"] == "request_validation_error"
+
+
+def test_prepare_card_never_delivers_invalid_rendered_content(request_payload, monkeypatch):
+    from aifs.models import RestInputResponse
+
+    monkeypatch.setattr(
+        "aifs.api.render_rest_input",
+        lambda _: RestInputResponse(
+            rest_input="not TOML", effective_settings={}, defaults_applied=[], warnings=[]
+        ),
+    )
+    payload = {**request_payload, "charge": 0, "spin": 1, "basis": "def2-TZVP"}
+    response = client.post("/v1/rest-inputs/prepare", json=payload)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "card_validation_failed"
+    assert "rest_input" not in response.json()
+
+
+def test_prepare_card_preserves_an_ion_bohr_geometry_and_safe_filename(request_payload):
+    payload = {
+        **request_payload,
+        "system_name": "../../Al3 anion",
+        "position_unit": "bohr",
+        "position": "Al 0 0 0\nAl 4.9 0 0\nAl 2.45 4.2 0",
+        "charge": -1,
+        "spin": 1,
+        "basis": "aug-cc-pVTZ",
+        "xc": "wB97M-V",
+        "xc_parser": "parse_xc",
+    }
+    response = client.post("/v1/rest-inputs/prepare", json=payload)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    data = tomllib.loads(body["rest_input"])
+    assert data["geom"]["position"].strip() == payload["position"]
+    assert data["geom"]["unit"] == "bohr"
+    assert data["ctrl"]["charge"] == -1
+    assert "/" not in body["filename"] and ".." not in body["filename"]
+
+
+def test_direct_cards_for_the_same_system_do_not_overwrite_other_settings(request_payload):
+    payload = {**request_payload, "charge": 0, "spin": 1, "basis": "def2-TZVP"}
+    first = client.post("/v1/rest-inputs/prepare", json=payload).json()
+    second = client.post("/v1/rest-inputs/prepare", json={**payload, "xc": "PBE0"}).json()
+    assert first["filename"] != second["filename"]
+    assert first["rest_input"] != second["rest_input"]
+    assert (
+        client.post("/v1/rest-inputs/prepare", json=payload).json()["filename"] == first["filename"]
+    )
+
+
+def test_direct_exports_are_relative_grouped_and_reused(request_payload):
+    payload = {**request_payload, "charge": 0, "spin": 1, "basis": "def2-TZVP"}
+    first = client.post("/v1/rest-inputs/prepare", json=payload).json()
+    repeated = client.post("/v1/rest-inputs/prepare", json=payload).json()
+    changed = client.post("/v1/rest-inputs/prepare", json={**payload, "xc": "PBE0"}).json()
+    path = PurePosixPath(first["export_relative_path"])
+    assert not path.is_absolute() and ".." not in path.parts
+    assert path.parts[0] == "aifs-inputs" and len(path.parts) == 3
+    assert path.name == first["filename"]
+    assert repeated["export_relative_path"] == first["export_relative_path"]
+    assert PurePosixPath(changed["export_relative_path"]).parent != path.parent
 
 
 def test_create_rest_input_returns_200_with_parseable_card(

@@ -1,13 +1,13 @@
 {
   "contract_version": 1,
   "source_hashes": {
-    "backend/src/aifs/contracts.py": "4e86ccdea228c7b248adc8cc0f633e983da235a340efb3cafc77c03e16cd18f1",
-    "backend/src/aifs/models.py": "72a3b887d4ec0c8a06ec7a6394cc560b4801a7a2665345472881d5e92a34311a",
-    "backend/src/aifs/workflow_models.py": "58b407ec44d138dfa8851ae0b95e985d08e48540229afbb8f59fc224da77b2c1",
+    "backend/src/aifs/contracts.py": "403c57272d3f775c424f21ae21b40c6cb882f54e8f8ec297735e2ac04f426c55",
+    "backend/src/aifs/models.py": "31e06e876fa4a1b8cf20287b2a8792d4c2e09fa84946a31cee1373ea1ce7d93b",
+    "backend/src/aifs/workflow_models.py": "8923c653d6b7f1412ff8ff9c19934356f8031a59d47c8c83a15f9724367a4aa8",
     "backend/src/aifs/evidence_models.py": "11ed6ed3694597f30013dab83427acde5fef741653870f8a56b43754596cbff4",
     "backend/src/aifs/rest/catalogs.py": "70b0d16c32b99b8bfd0e45b27e319cf25f86a5d843640684213b6ca2c04ffc0f"
   },
-  "generated_ts_sha256": "819d228292974d3fbc3e878ab438775bcbe860bb4d590640e5bd3198699c086b",
+  "generated_ts_sha256": "43582e1d8f51892b93513d132ed637ff2166a70aa6b4b08458d0b5e9cb4392f1",
   "models": {
     "PlanDraft": {
       "$defs": {
@@ -762,6 +762,105 @@
           "title": "MethodDecision",
           "type": "object"
         },
+        "MethodDecisionPatch": {
+          "additionalProperties": false,
+          "properties": {
+            "xc": {
+              "default": null,
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Xc",
+              "type": "string"
+            },
+            "xc_parser": {
+              "default": null,
+              "enum": [
+                "legacy",
+                "parse_xc"
+              ],
+              "title": "Xc Parser",
+              "type": "string"
+            },
+            "basis": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Basis"
+            },
+            "empirical_dispersion": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "d3",
+                    "d3bj",
+                    "d4"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Empirical Dispersion"
+            },
+            "source": {
+              "default": null,
+              "enum": [
+                "user",
+                "evidence",
+                "provisional"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "rationale": {
+              "default": null,
+              "maxLength": 4000,
+              "minLength": 1,
+              "title": "Rationale",
+              "type": "string"
+            },
+            "uncertainty": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Uncertainty"
+            },
+            "supporting": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Supporting",
+              "type": "array"
+            },
+            "opposing": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/EvidenceRef"
+              },
+              "title": "Opposing",
+              "type": "array"
+            }
+          },
+          "title": "MethodDecisionPatch",
+          "type": "object"
+        },
         "PlanDraft": {
           "additionalProperties": false,
           "properties": {
@@ -806,6 +905,68 @@
             "tasks"
           ],
           "title": "PlanDraft",
+          "type": "object"
+        },
+        "PlanPatch": {
+          "additionalProperties": false,
+          "description": "Update existing tasks by ID; lists and rest_options replace their whole field.",
+          "properties": {
+            "question": {
+              "default": null,
+              "maxLength": 8000,
+              "minLength": 1,
+              "title": "Question",
+              "type": "string"
+            },
+            "goal": {
+              "default": null,
+              "enum": [
+                "reaction_energy",
+                "binding_energy",
+                "optimization_single_point",
+                "force",
+                "dipole",
+                "other"
+              ],
+              "title": "Goal",
+              "type": "string"
+            },
+            "tasks": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/PlanTaskPatch"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Tasks",
+              "type": "array"
+            },
+            "assumptions": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Assumptions",
+              "type": "array"
+            },
+            "add_tasks": {
+              "items": {
+                "$ref": "#/$defs/PlanTask"
+              },
+              "maxItems": 100,
+              "title": "Add Tasks",
+              "type": "array"
+            },
+            "remove_task_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "Remove Task Ids",
+              "type": "array"
+            }
+          },
+          "title": "PlanPatch",
           "type": "object"
         },
         "PlanTask": {
@@ -933,6 +1094,135 @@
           "title": "PlanTask",
           "type": "object"
         },
+        "PlanTaskPatch": {
+          "additionalProperties": false,
+          "properties": {
+            "task_id": {
+              "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+              "title": "Task Id",
+              "type": "string"
+            },
+            "title": {
+              "default": null,
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "default": null,
+              "maxLength": 2000,
+              "minLength": 1,
+              "title": "Purpose",
+              "type": "string"
+            },
+            "kind": {
+              "default": null,
+              "enum": [
+                "rest",
+                "analysis",
+                "unsupported"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "system_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "System Name"
+            },
+            "job_type": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Job Type"
+            },
+            "rest_options": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "type": "object"
+              },
+              "default": null,
+              "title": "Rest Options",
+              "type": "object"
+            },
+            "analysis_formula": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Analysis Formula"
+            },
+            "inputs": {
+              "$ref": "#/$defs/TaskInputsPatch",
+              "default": null
+            },
+            "candidates": {
+              "default": null,
+              "items": {
+                "$ref": "#/$defs/MethodCandidate"
+              },
+              "title": "Candidates",
+              "type": "array"
+            },
+            "decision": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MethodDecisionPatch"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Notes"
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "title": "PlanTaskPatch",
+          "type": "object"
+        },
         "TaskInputs": {
           "additionalProperties": false,
           "properties": {
@@ -1054,6 +1344,128 @@
           },
           "title": "TaskInputs",
           "type": "object"
+        },
+        "TaskInputsPatch": {
+          "additionalProperties": false,
+          "properties": {
+            "position": {
+              "anyOf": [
+                {
+                  "maxLength": 200000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position"
+            },
+            "position_unit": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "angstrom",
+                    "bohr"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position Unit"
+            },
+            "position_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external_optimized",
+                    "prior_result"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position Source"
+            },
+            "position_from_task": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Position From Task"
+            },
+            "charge": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Charge"
+            },
+            "charge_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Charge Source"
+            },
+            "spin": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spin"
+            },
+            "spin_source": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "user",
+                    "external"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Spin Source"
+            }
+          },
+          "title": "TaskInputsPatch",
+          "type": "object"
         }
       },
       "additionalProperties": false,
@@ -1070,13 +1482,31 @@
           "type": "string"
         },
         "plan": {
-          "$ref": "#/$defs/PlanDraft"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlanDraft"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "patch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlanPatch"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "expected_version",
-        "change_reason",
-        "plan"
+        "change_reason"
       ],
       "title": "PlanRevisionRequest",
       "type": "object"
@@ -1228,6 +1658,148 @@
       "title": "RestInputRequest",
       "type": "object"
     },
+    "PrepareRestInputRequest": {
+      "$defs": {
+        "JsonValue": {}
+      },
+      "additionalProperties": false,
+      "description": "Model-facing card preparation: scientific inputs must be explicit.\n\nLegacy rendering defaults remain on RestInputRequest for API compatibility.\nProviding values is not independently authenticated evidence of user consent.",
+      "properties": {
+        "system_name": {
+          "title": "System Name",
+          "type": "string"
+        },
+        "position": {
+          "title": "Position",
+          "type": "string"
+        },
+        "position_unit": {
+          "enum": [
+            "angstrom",
+            "bohr"
+          ],
+          "title": "Position Unit",
+          "type": "string"
+        },
+        "job_type": {
+          "enum": [
+            "energy",
+            "opt",
+            "force",
+            "numerical dipole"
+          ],
+          "title": "Job Type",
+          "type": "string"
+        },
+        "xc": {
+          "title": "Xc",
+          "type": "string"
+        },
+        "xc_parser": {
+          "default": "legacy",
+          "enum": [
+            "legacy",
+            "parse_xc"
+          ],
+          "title": "Xc Parser",
+          "type": "string"
+        },
+        "rest_options": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/$defs/JsonValue"
+            },
+            "type": "object"
+          },
+          "title": "Rest Options",
+          "type": "object"
+        },
+        "basis": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Basis",
+          "type": "string"
+        },
+        "charge": {
+          "title": "Charge",
+          "type": "number"
+        },
+        "spin": {
+          "minimum": 1,
+          "title": "Spin",
+          "type": "integer"
+        },
+        "spin_polarization": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spin Polarization"
+        },
+        "empirical_dispersion": {
+          "anyOf": [
+            {
+              "enum": [
+                "d3",
+                "d3bj",
+                "d4"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Empirical Dispersion"
+        },
+        "print_level": {
+          "default": 1,
+          "minimum": 0,
+          "title": "Print Level",
+          "type": "integer"
+        },
+        "num_threads": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Num Threads",
+          "type": "integer"
+        },
+        "outputs": {
+          "items": {
+            "type": "string",
+            "enum": [
+              "cube_orb",
+              "dipole",
+              "fchk",
+              "force",
+              "force_for_ghost_point_charges",
+              "geometry",
+              "molden"
+            ]
+          },
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "system_name",
+        "position",
+        "position_unit",
+        "job_type",
+        "xc",
+        "basis",
+        "charge",
+        "spin"
+      ],
+      "title": "PrepareRestInputRequest",
+      "type": "object"
+    },
     "ValidateInputRequest": {
       "additionalProperties": false,
       "description": "Request to independently validate a complete REST TOML input card.",
@@ -1277,6 +1849,151 @@
         "warnings"
       ],
       "title": "RestInputResponse",
+      "type": "object"
+    },
+    "PreparedRestInputResponse": {
+      "$defs": {
+        "ValidateInputResponse": {
+          "description": "Result of independently validating a REST TOML input card.\n\n``valid = false`` is a successful domain result, not an infrastructure\nfailure.",
+          "properties": {
+            "valid": {
+              "title": "Valid",
+              "type": "boolean"
+            },
+            "errors": {
+              "items": {
+                "$ref": "#/$defs/ValidationIssue"
+              },
+              "title": "Errors",
+              "type": "array"
+            },
+            "warnings": {
+              "items": {
+                "$ref": "#/$defs/ValidationIssue"
+              },
+              "title": "Warnings",
+              "type": "array"
+            },
+            "parsed_sections": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Parsed Sections",
+              "type": "array"
+            }
+          },
+          "required": [
+            "valid",
+            "errors",
+            "warnings",
+            "parsed_sections"
+          ],
+          "title": "ValidateInputResponse",
+          "type": "object"
+        },
+        "ValidationIssue": {
+          "description": "A single validator finding on a REST input card.",
+          "properties": {
+            "code": {
+              "title": "Code",
+              "type": "string"
+            },
+            "message": {
+              "title": "Message",
+              "type": "string"
+            },
+            "section": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Section"
+            },
+            "field": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Field"
+            },
+            "line": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Line"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ValidationIssue",
+          "type": "object"
+        }
+      },
+      "description": "An independently checked card, ready for DSH file export without a plan.",
+      "properties": {
+        "rest_input": {
+          "title": "Rest Input",
+          "type": "string"
+        },
+        "effective_settings": {
+          "additionalProperties": true,
+          "title": "Effective Settings",
+          "type": "object"
+        },
+        "defaults_applied": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Defaults Applied",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "export_relative_path": {
+          "title": "Export Relative Path",
+          "type": "string"
+        },
+        "validation": {
+          "$ref": "#/$defs/ValidateInputResponse"
+        }
+      },
+      "required": [
+        "rest_input",
+        "effective_settings",
+        "defaults_applied",
+        "warnings",
+        "filename",
+        "export_relative_path",
+        "validation"
+      ],
+      "title": "PreparedRestInputResponse",
       "type": "object"
     },
     "ValidateInputResponse": {
