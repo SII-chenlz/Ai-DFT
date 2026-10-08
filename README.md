@@ -6,13 +6,13 @@ AIFS 是 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-har
 
 ## 安装
 
-安装包见 [0.1.16 测试版下载页](https://github.com/SII-chenlz/Ai-DFT/releases/tag/v0.1.16)，展开 **Assets**，选择与系统对应的 `.tgz`：[Mac arm64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.16/aifs-dsh-0.1.16-macos-arm64-local.tgz)／[Windows x64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.16/aifs-dsh-0.1.16-windows-x64-local.tgz)。全部版本见 [Releases](https://github.com/SII-chenlz/Ai-DFT/releases)。
+安装包见 [0.1.19 测试版下载页](https://github.com/SII-chenlz/Ai-DFT/releases/tag/v0.1.19)，展开 **Assets**，选择与系统对应的 `.tgz`：[Mac arm64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.19/aifs-dsh-0.1.19-macos-arm64-local.tgz)／[Windows x64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.19/aifs-dsh-0.1.19-windows-x64-local.tgz)。全部版本见 [Releases](https://github.com/SII-chenlz/Ai-DFT/releases)。
 
 1. 打开 DSH 桌面版，在「插件 → 添加插件」填写 `.tgz` 安装包的绝对路径，无需解压。
 2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
 3. 在 DSH「设置 → 模型」配置接口与 API Key，选择支持工具调用的模型。
 
-下载页为 0.1.16 测试包。0.1.19 尚未发布，Mac 包及服务检查已通过，真实模型对话未验证；本轮未构建 Windows 包。Intel Mac 暂无安装包。
+0.1.19 为测试版，Mac 与 Windows 原生构建及后端检查通过，真实模型对话和客户端安装尚未完成验收。Intel Mac 暂无安装包。
 
 用户无需安装 Python 或 Node。升级时卸载旧插件、安装新版，完全退出并重开 DSH（Mac 用 `⌘Q`）。
 
