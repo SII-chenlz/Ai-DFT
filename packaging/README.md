@@ -1,6 +1,6 @@
 # AIFS 桌面插件安装
 
-插件包含编译后的工具、Skill 和本机后端。提供 macOS arm64 和 Windows x64 调试包；Windows 后端已通过原生运行检查，DSH 客户端安装及真实对话待验收。
+插件包含工具、Skill 和本机后端。Mac ARM64、Windows x64 分别使用对应安装包。
 
 ## 安装与使用
 
