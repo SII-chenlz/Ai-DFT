@@ -11,6 +11,10 @@
 
 用户无需安装 Python、Node 或 Conda。更新时卸载旧插件、安装新版，完全退出并重开 DSH。旧聊天的本机下载链接可能失效，要求找回已保存的卡片即可获得当前链接或正文。
 
+输入卡的 `basis_path` 默认只写基组名，例如 `aug-cc-pVTZ`。REST 会查找实际运行目录和计算机器配置的基组池；缺文件时尝试联网下载。离线运行需提前准备基组。辅助基组、波函数等外部文件的路径也必须在计算机器上有效。
+
+基组名随用户选择变化，上面的名称只是示例。使用已有基组池时，在运行 REST 的机器上设置 `REST_BASIS_DIR` 为池的实际路径，例如 Linux/macOS 的 `export REST_BASIS_DIR="/path/to/basis-set-pool"`；Windows PowerShell 的 `$env:REST_BASIS_DIR = 'D:/REST/basis-set-pool'`。REST 查池时按小写基组子目录查找，例如 `aug-cc-pvtz/`。基组来源：[Basis Set Exchange](https://www.basissetexchange.org/)；插件不附带基组文件。
+
 ## 数据
 
 默认目录为 `$DSH_HOME/aifs/`，未设置 DSH_HOME 时使用用户目录下的 `.dsh/aifs/`。计划和证据数据库、卡片记录及日志独立于安装目录，更新或卸载不会主动删除。日志在 `logs/launcher.log` 和 `logs/backend.log`。
@@ -38,4 +42,4 @@ Windows PowerShell：
 
 自定义 DSH_HOME 时使用实际目标目录。迁移先备份 SQLite 再复制，保留源文件，拒绝覆盖目标；不合并已使用的数据库。
 
-开发者构建命令见源码仓库的 `scripts/README.md`，真实对话检查见 [验收案例](local-acceptance.md)。
+开发者构建命令见源码仓库的 `scripts/README.md`。

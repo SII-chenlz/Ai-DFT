@@ -54,7 +54,6 @@ await cp(join(root, 'skills'), join(stage, 'assets/skills'), { recursive: true }
 await cp(join(source, 'cordis.patch.yml'), join(stage, 'cordis.patch.yml'))
 await cp(join(root, 'packaging/requirements-desktop.lock'), join(stage, 'build-requirements.lock'))
 await cp(join(root, 'packaging/README.md'), join(stage, 'README.md'))
-await cp(join(root, 'packaging/local-acceptance.md'), join(stage, 'local-acceptance.md'))
 await cp(join(root, 'packaging/rest-coverage.md'), join(stage, 'rest-coverage.md'))
 await cp(join(root, 'LICENSE'), join(stage, 'LICENSE'))
 await cp(join(root, 'THIRD_PARTY_NOTICES.md'), join(stage, 'THIRD_PARTY_NOTICES.md'))

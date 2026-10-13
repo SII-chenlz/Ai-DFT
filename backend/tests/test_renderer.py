@@ -1,6 +1,7 @@
 """Tests for the REST TOML renderer in aifs.rest.renderer."""
 
 from collections.abc import Callable
+from pathlib import PureWindowsPath
 
 import pytest
 
@@ -54,6 +55,32 @@ def test_basis_path_joins_configured_pool_and_basis(
     response = render_rest_input(make_request())
     data = tomllib.loads(response.rest_input)
     assert data["ctrl"]["basis_path"] == "/opt/rest/pool/def2-TZVPP"
+
+
+@pytest.mark.parametrize(
+    ("pool", "expected"),
+    [
+        (".", "aug-cc-pVTZ"),
+        ("basis_set_pool", "basis_set_pool/aug-cc-pVTZ"),
+        ("D:\\REST\\basis sets", "D:/REST/basis sets/aug-cc-pVTZ"),
+    ],
+)
+def test_windows_basis_paths_use_portable_slashes(
+    make_request: Callable[..., RestInputRequest],
+    monkeypatch: pytest.MonkeyPatch,
+    pool: str,
+    expected: str,
+) -> None:
+    from aifs.rest import renderer
+    from aifs.rest.validator import validate_rest_input
+
+    monkeypatch.setenv("AIFS_BASIS_SET_POOL", pool)
+    get_settings.cache_clear()
+    monkeypatch.setattr(renderer, "Path", PureWindowsPath)
+    response = render_rest_input(make_request(basis="aug-cc-pVTZ"))
+    assert tomllib.loads(response.rest_input)["ctrl"]["basis_path"] == expected
+    assert response.effective_settings["basis_path"] == expected
+    assert validate_rest_input(response.rest_input).valid
 
 
 @pytest.mark.parametrize(

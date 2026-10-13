@@ -17,6 +17,8 @@ import urllib.request
 from copy import deepcopy
 from pathlib import Path
 
+import tomllib
+
 
 def request(address, path, body=None, method=None):
     data = None if body is None else json.dumps(body).encode()
@@ -89,6 +91,7 @@ def main():
 
         try:
             first, address = start()
+            # Sample choices for the test; production uses each user's basis.
             task = {
                 "task_id": "h2",
                 "title": "H2 electronic energy",
@@ -132,12 +135,54 @@ def main():
                 },
             )
             assert direct["validation"]["valid"]
+            assert tomllib.loads(direct["rest_input"])["ctrl"]["basis_path"] == (
+                task["decision"]["basis"]
+            )
             assert direct["filename"].startswith("H2-energy-") and direct[
                 "filename"
             ].endswith(".in")
             assert direct["export_relative_path"] == (
                 f"aifs-inputs/{Path(direct['filename']).stem}/{direct['filename']}"
             )
+            # Exercise the new module inside the frozen runtime, not the
+            # development Python environment. This prepares input, not a GW run.
+            bse_request = {
+                "system_name": "H2",
+                "position": task["inputs"]["position"],
+                "position_unit": "angstrom",
+                "charge": 0,
+                "spin": 1,
+                "xc": "PBE",
+                "basis": "cc-pVDZ",
+                "job_type": "energy",
+                "rest_options": {
+                    "ctrl": {"eri_type": "ri_v", "auxbas_path": "./basis/JKFIT"},
+                    "quasiparticle_methods": {
+                        "gw_or_bse": "bse",
+                        "gw_scheme": "extrapolated",
+                        "bse_spin": "triplet",
+                        "bse_tda": True,
+                        "bse_davidson_solver": True,
+                        "davidson_target_excitations": 5,
+                    },
+                },
+            }
+            bse = request(address, "/v1/rest-inputs/prepare", bse_request)
+            assert bse["validation"]["valid"]
+            assert tomllib.loads(bse["rest_input"])["ctrl"]["basis_path"] == bse_request["basis"]
+            assert 'spin = 1' in bse["rest_input"]
+            assert 'bse_spin = "triplet"' in bse["rest_input"]
+            assert request(
+                address, "/v1/rest-inputs/validate", {"rest_input": bse["rest_input"]}
+            )["valid"]
+            bse_request["rest_options"]["quasiparticle_methods"]["threshold"] = 0.1
+            try:
+                request(address, "/v1/rest-inputs/prepare", bse_request)
+            except urllib.error.HTTPError as error:
+                assert error.code == 422
+                assert "gw_extrapolate_occ_threshold" in error.read().decode()
+            else:
+                raise AssertionError("Frozen GW/BSE accepted an ignored threshold keyword")
             assert request(address, "/v1/plans")["plans"] == []
             task["decision"]["basis"] = None
             pending = request(address, "/v1/plans", plan)
@@ -160,6 +205,7 @@ def main():
                 address, f"/v1/plans/{plan_id}/tasks/h2/cards", method="POST"
             )
             assert card["validation"]["valid"]
+            assert tomllib.loads(card["content"])["ctrl"]["basis_path"] == task["decision"]["basis"]
             assert card["export_relative_path"] == (
                 f"aifs-inputs/plan-{plan_id}/task-h2/{card['filename']}"
             )
@@ -322,6 +368,9 @@ def main():
                     "dynamic-loopback-port",
                     "health",
                     "direct-card-without-plan",
+                    "portable-basis-name",
+                    "gw-bse-direct-card-and-independent-validation",
+                    "gw-bse-ignored-keyword-blocked",
                     "stable-workspace-export-paths",
                     "unconfirmed-basis-blocked",
                     "plan-and-card",

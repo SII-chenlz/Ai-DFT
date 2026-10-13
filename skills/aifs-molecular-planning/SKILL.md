@@ -14,6 +14,7 @@ Resolve relative files against the directory `resourceBase` returned by DSH's Sk
 - [methods.md](references/methods.md) when proposing or confirming functionals/bases: per-stage choices, exact variants, double hybrids and derivative limits.
 - [observables.md](references/observables.md) for energy differences, experimental comparison, ZPE/thermal corrections or spectroscopy. Plan from the quantity and actual states, not a test molecule.
 - [rest-operations.md](references/rest-operations.md) for frequencies, thermochemistry, multipoles, excited states, TS/IRC, constraints or RRS-PBC. Pair the mapping with the current capability tool; AIFS integration gaps are not proof that REST lacks a feature.
+- [gw-bse.md](references/gw-bse.md) for GW quasiparticle energies or BSE excitations: reference state, excitation channel, solver, acceleration and auxiliary basis settings.
 
 Use the complete create/revise tool schemas. The user's workspace need not contain backend source. Query `get_rest_capabilities` before offering REST-ready choices; reuse that result and query only relevant sections for exact types, units and operation limits.
 

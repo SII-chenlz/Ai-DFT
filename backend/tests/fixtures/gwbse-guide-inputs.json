@@ -1,0 +1,337 @@
+[
+  {
+    "system_name": "H2O",
+    "position": "O -0.86256579 2.06483611 0.32113915\nH 0.11006499 2.12811944 0.32113915\nH -1.12744298 3.00284187 0.32113915",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "singlet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "H2O",
+    "position": "O -0.86256579 2.06483611 0.32113915\nH 0.11006499 2.12811944 0.32113915\nH -1.12744298 3.00284187 0.32113915",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "triplet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "NH3",
+    "position": "N -1.41694694 -0.69435721 0.00000000\nH -0.98939307 -1.63250945 0.00000000\nH -0.98932171 -0.22531007 0.81244350\nH -0.98932171 -0.22531007 -0.81244350",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "singlet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "NH3",
+    "position": "N -1.41694694 -0.69435721 0.00000000\nH -0.98939307 -1.63250945 0.00000000\nH -0.98932171 -0.22531007 0.81244350\nH -0.98932171 -0.22531007 -0.81244350",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "triplet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "CH3COCH3",
+    "position": "C -0.17850765 0.47097651 0.05115046\nO 1.04100223 0.44269123 0.05319921\nC -0.99386496 -0.82046198 0.05112240\nH -2.08893435 -0.66023920 0.04912070\nH -0.71070372 -1.42278052 -0.83613481\nH -0.71368292 -1.42092813 0.94057875\nC -0.95788519 1.77488512 0.04855271\nH -1.62113333 1.82526581 -0.84133350\nH -1.62396101 1.82708534 0.93621906\nH -0.26289640 2.63427119 0.04877995",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "singlet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "CH3COCH3",
+    "position": "C -0.17850765 0.47097651 0.05115046\nO 1.04100223 0.44269123 0.05319921\nC -0.99386496 -0.82046198 0.05112240\nH -2.08893435 -0.66023920 0.04912070\nH -0.71070372 -1.42278052 -0.83613481\nH -0.71368292 -1.42092813 0.94057875\nC -0.95788519 1.77488512 0.04855271\nH -1.62113333 1.82526581 -0.84133350\nH -1.62396101 1.82708534 0.93621906\nH -0.26289640 2.63427119 0.04877995",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "triplet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "C6H6",
+    "position": "C -0.97981444 0.50345020 0.00006312\nC 0.42492240 0.50258670 0.00050944\nC 1.12749384 1.71893729 -0.00004334\nC 0.42449110 2.93511535 -0.00104890\nC -0.98021276 2.93559862 -0.00149615\nC -1.68312892 1.71940840 -0.00094104\nH -1.53020384 -0.45023568 0.00049390\nH 0.97505186 -0.45127886 0.00130093\nH 2.22862628 1.71911662 0.00030003\nH 0.97494734 3.88877536 -0.00148122\nH -1.53039910 3.88941952 -0.00228443\nH -2.78427157 1.71929817 -0.00129030",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "singlet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "C6H6",
+    "position": "C -0.97981444 0.50345020 0.00006312\nC 0.42492240 0.50258670 0.00050944\nC 1.12749384 1.71893729 -0.00004334\nC 0.42449110 2.93511535 -0.00104890\nC -0.98021276 2.93559862 -0.00149615\nC -1.68312892 1.71940840 -0.00094104\nH -1.53020384 -0.45023568 0.00049390\nH 0.97505186 -0.45127886 0.00130093\nH 2.22862628 1.71911662 0.00030003\nH 0.97494734 3.88877536 -0.00148122\nH -1.53039910 3.88941952 -0.00228443\nH -2.78427157 1.71929817 -0.00129030",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "bse_spin": "triplet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 10,
+        "davidson_maximum_subspace_size": 60,
+        "davidson_restart_dimensions": 15
+      }
+    }
+  },
+  {
+    "system_name": "PNA_p-nitroaniline",
+    "position": "C -2.09985604 0.07339622 0.01521403\nC -0.69848184 0.06870414 0.01563245\nC -0.02441714 1.29668811 0.01509792\nC -0.71100898 2.51672925 0.01411922\nC -2.11284068 2.49923864 0.01368334\nC -2.82697237 1.28424134 0.01424298\nH -2.64672721 -0.88281302 0.01565616\nH -0.13378851 -0.87506654 0.01640946\nH -0.15587971 3.46606060 0.01364849\nH -2.68841967 3.43631720 0.01285135\nN 1.45730738 1.30235877 0.01557465\nO 2.01066852 1.30416794 1.11203635\nO 2.01124922 1.30444543 -1.08060058\nN -4.26344039 1.33768859 0.01372649\nH -4.63076331 0.82971233 -0.80234628\nH -4.63128950 0.83326900 0.83177015",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "singlet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "PNA_p-nitroaniline",
+    "position": "C -2.09985604 0.07339622 0.01521403\nC -0.69848184 0.06870414 0.01563245\nC -0.02441714 1.29668811 0.01509792\nC -0.71100898 2.51672925 0.01411922\nC -2.11284068 2.49923864 0.01368334\nC -2.82697237 1.28424134 0.01424298\nH -2.64672721 -0.88281302 0.01565616\nH -0.13378851 -0.87506654 0.01640946\nH -0.15587971 3.46606060 0.01364849\nH -2.68841967 3.43631720 0.01285135\nN 1.45730738 1.30235877 0.01557465\nO 2.01066852 1.30416794 1.11203635\nO 2.01124922 1.30444543 -1.08060058\nN -4.26344039 1.33768859 0.01372649\nH -4.63076331 0.82971233 -0.80234628\nH -4.63128950 0.83326900 0.83177015",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "triplet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "coumarin",
+    "position": "C -7.10073387 -0.32984527 0.00031797\nC -5.70519837 -0.35669243 0.00015019\nC -4.96023962 0.84771790 0.00025124\nC -5.66232796 2.08422244 0.00052888\nC -7.06867980 2.11381885 0.00069476\nC -7.77825493 0.90849652 0.00058913\nH -2.94806157 -0.03510472 -0.00013592\nH -7.67168481 -1.26995262 0.00023921\nH -5.16231714 -1.31492699 -0.00006281\nC -3.51887016 0.90790518 0.00008628\nH -7.57622417 3.08889021 0.00090452\nH -8.87871555 0.93028868 0.00072001\nC -3.59449180 3.38114915 0.00050310\nC -2.87109984 2.10972039 0.00020213\nH -1.77527076 2.18974403 0.00008190\nO -5.00442345 3.27419713 0.00064381\nO -3.11438457 4.49245602 0.00064404",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "singlet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  },
+  {
+    "system_name": "coumarin",
+    "position": "C -7.10073387 -0.32984527 0.00031797\nC -5.70519837 -0.35669243 0.00015019\nC -4.96023962 0.84771790 0.00025124\nC -5.66232796 2.08422244 0.00052888\nC -7.06867980 2.11381885 0.00069476\nC -7.77825493 0.90849652 0.00058913\nH -2.94806157 -0.03510472 -0.00013592\nH -7.67168481 -1.26995262 0.00023921\nH -5.16231714 -1.31492699 -0.00006281\nC -3.51887016 0.90790518 0.00008628\nH -7.57622417 3.08889021 0.00090452\nH -8.87871555 0.93028868 0.00072001\nC -3.59449180 3.38114915 0.00050310\nC -2.87109984 2.10972039 0.00020213\nH -1.77527076 2.18974403 0.00008190\nO -5.00442345 3.27419713 0.00064381\nO -3.11438457 4.49245602 0.00064404",
+    "position_unit": "angstrom",
+    "charge": 0.0,
+    "spin": 1,
+    "xc": "scan",
+    "basis": "cc-pVDZ",
+    "job_type": "energy",
+    "rest_options": {
+      "ctrl": {
+        "auxbas_path": "def2-SV(P)-JKFIT",
+        "eri_type": "ri_v",
+        "use_ri_symm": true
+      },
+      "quasiparticle_methods": {
+        "gw_or_bse": "bse",
+        "gw_scheme": "extrapolated",
+        "use_low_rank_contour": true,
+        "bse_spin": "triplet",
+        "bse_tda": true,
+        "bse_davidson_solver": true,
+        "davidson_target_excitations": 5,
+        "davidson_maximum_subspace_size": 50,
+        "davidson_restart_dimensions": 10
+      }
+    }
+  }
+]

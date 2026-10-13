@@ -14,7 +14,7 @@ from typing import Any
 
 UPSTREAM_COMMIT = "6fa7f3b0b6476fa533dfc38af8b8505730713ac6"
 UPSTREAM_URL = f"https://gitee.com/restgroup/rest/tree/{UPSTREAM_COMMIT}"
-CHECKED_DATE = "2026-10-04"
+CHECKED_DATE = "2026-10-12"
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,8 @@ SECTIONS: dict[str, dict[str, Keyword]] = {
         "chkfile": S,
         "basis_type": enum("Spheric", "Cartesian"),
         "auxbas_path": S,
-        "eri_type": enum("analytic", "ri-v"),
+        "eri_type": enum("analytic", "ri-v", "ri_v"),
+        "use_ri_symm": B,
         "algorithm_jk": enum("ri-direct", "ri-incore", "ri", "default"),
         "algorithm_j": enum("ri-direct", "ri-incore", "ri", "default", "ri-schwartz"),
         "algorithm_k": enum("ri-direct", "ri-incore", "ri", "default"),
@@ -214,6 +215,39 @@ SECTIONS: dict[str, dict[str, Keyword]] = {
         "usedmax": B,
         "prefix": S,
         "verbose": NONNEG_INT,
+    },
+    "quasiparticle_methods": {
+        "gw_or_bse": enum("gw", "bse"),
+        "gw_scheme": enum("extrapolated", "qp equation", "linearize", "parse from file"),
+        "scgw": enum("g0w0", "evgw"),
+        "evgw_rounds": COUNT,
+        "homo_lumo_gw_qp": B,
+        "renormalized_singles": B,
+        "w_rs": B,
+        "gw_extrapolate_occ_threshold": Keyword("number", minimum=0, unit="hartree"),
+        "gw_extrapolate_vir_threshold": Keyword("number", minimum=0, unit="hartree"),
+        "use_low_rank_contour": B,
+        "nomega_chi_real": COUNT,
+        "low_rank_tolerance": POS,
+        "omega_chi_max": Keyword("number", minimum=0, unit="hartree; 0 selects automatic range"),
+        "low_rank_grid_type": enum("linear", "quadratic"),
+        "low_rank_interp": enum("linear", "nearest"),
+        "bse_spin": enum("singlet", "triplet", "both", "unrestricted"),
+        "bse_tda": B,
+        "bse_davidson_solver": B,
+        "davidson_target_excitations": COUNT,
+        "davidson_maximum_subspace_size": COUNT,
+        "davidson_restart_dimensions": COUNT,
+        "davidson_add_dimensions": COUNT,
+        "davidson_max_iter": COUNT,
+        "davidson_converge_threshold": POS,
+        "bse_cutoff_energy": Keyword("number", unit="hartree; absolute virtual orbital energy"),
+        "bse_auxbas_path": S,
+        "bse_matvec_style": enum("ao", "mo"),
+        "bse_qp_polarization": B,
+        "save_qp": B,
+        "save_qp_path": S,
+        "parse_qp_path": S,
     },
     "tddft": {
         "tddft_method": enum("tda", "lr"),
@@ -383,7 +417,12 @@ def option_errors(options: dict[str, dict[str, Any]]) -> list[str]:
             continue
         for field, value in values.items():
             spec = SECTIONS[section].get(field)
-            if spec is None:
+            if section == "quasiparticle_methods" and field == "threshold":
+                errors.append(
+                    "[quasiparticle_methods] threshold is not read by the pinned REST parser; "
+                    "use gw_extrapolate_occ_threshold and gw_extrapolate_vir_threshold (hartree)"
+                )
+            elif spec is None:
                 errors.append(f"[{section}] {field} is not an allowed extension keyword")
             elif not accepts(spec, value):
                 errors.append(f"[{section}] {field} requires {spec.type}; choices={spec.choices}")
@@ -438,7 +477,7 @@ def semantic_errors(
                 errors.append("Post-SCF multipoles are unavailable for unrestricted references")
             if ctrl.get("frozen_core_postscf", 0) != 0:
                 errors.append("Post-SCF multipoles do not support frozen-core settings")
-            if ctrl.get("eri_type", "ri-v") != "ri-v":
+            if ctrl.get("eri_type", "ri-v") not in {"ri-v", "ri_v"}:
                 errors.append("Post-SCF multipoles require RI integrals")
         if anal.get("multipole_rdm1_dump"):
             errors.append(
@@ -544,11 +583,16 @@ def semantic_errors(
             analytic
             or bool(tasks)
             or "tddft" in options
+            or "quasiparticle_methods" in options
             or ctrl.get("numerical_force")
             or job not in {"energy", "force", "opt"}
         ):
             errors.append("AO pair pruning is incompatible with this derivative/response task")
     errors.extend(_rrs_errors(ctrl, geom, atoms))
+    if "quasiparticle_methods" in options:
+        from aifs.rest.quasiparticle import quasiparticle_errors
+
+        errors.extend(quasiparticle_errors(ctrl, options["quasiparticle_methods"]))
     return errors
 
 
@@ -641,7 +685,8 @@ def capability_view(section: str | None = None) -> dict[str, Any]:
         "pending": [
             "arbitrary parse_xc expressions and additional LibXC names",
             "MD/AIMD/QM-MM/pure-MM",
-            "GW/BSE",
+            "GW/BSE response, SOC, QSGW, dynamic kernels, FEAST and excited-state derivatives",
+            "unrestricted evGW/rsGW and non-extrapolated unrestricted GW",
             "3D RRS-PBC sampling",
             "post-SCF multipole density export",
             "TDDFT excited-state optimization and RSH/mGGA/FEAST/combined-spin gradients",
@@ -654,6 +699,12 @@ def capability_view(section: str | None = None) -> dict[str, Any]:
             "RRS-PBC is finite-cluster post-SCF reconstruction, not periodic SCF",
             "VV10 energies are wired in pinned source; derivative/response combinations "
             "need separate verification",
+            "GW/BSE uses job_type=energy and quasiparticle_methods; SCF spin and "
+            "BSE excitation channel are separate. Query that section for input checks",
+            "GW/BSE threshold is not a parsed key; use separate occupied/virtual "
+            "gw_extrapolate_*_threshold windows in hartree",
+            "BSE can use a separate prepared auxiliary basis via bse_auxbas_path "
+            "(including a LAMB basis); external files and numerical accuracy are not checked",
         ],
     }
     if section is not None:

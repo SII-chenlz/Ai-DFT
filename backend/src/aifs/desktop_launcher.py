@@ -18,10 +18,11 @@ import uvicorn
 def configure_data(data_dir: Path) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "logs").mkdir(exist_ok=True)
-    (data_dir / "basis_set_pool").mkdir(exist_ok=True)
     os.environ["AIFS_WORKFLOW_DB"] = str(data_dir / "aifs-workflow.sqlite3")
     os.environ["AIFS_EVIDENCE_DB"] = str(data_dir / "aifs-evidence.sqlite3")
-    os.environ["AIFS_BASIS_SET_POOL"] = str(data_dir / "basis_set_pool")
+    # Cards run in REST's environment, which may be a different machine.
+    # A bare basis name lets REST search its working directory and basis pools.
+    os.environ["AIFS_BASIS_SET_POOL"] = "."
     # Desktop base package uses FTS5; ambient model configuration must not
     # trigger unbundled downloads or import optional FAISS at startup.
     os.environ["AIFS_EMBEDDING_MODEL"] = ""

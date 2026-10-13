@@ -4,9 +4,11 @@ AIFS 是 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-har
 
 **目前只准备输入，REST 由用户运行。** 未覆盖全部 REST 功能，范围见 [能力清单](packaging/rest-coverage.md)。仓库包含 TypeScript 插件、Markdown Skill 和 Python 后端。
 
+当前源码版本为 1.0.1，包含 GW/BSE 输入支持；下面的 GitHub 下载仍为 0.1.19 旧测试包，尚不包含此功能。使用方式见 [GW/BSE 输入说明](skills/aifs-molecular-planning/references/gw-bse.md)。
+
 ## 安装
 
-安装包见 [0.1.19 测试版下载页](https://github.com/SII-chenlz/Ai-DFT/releases/tag/v0.1.19)，展开 **Assets**，选择与系统对应的 `.tgz`：[Mac arm64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.19/aifs-dsh-0.1.19-macos-arm64-local.tgz)／[Windows x64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.19/aifs-dsh-0.1.19-windows-x64-local.tgz)。全部版本见 [Releases](https://github.com/SII-chenlz/Ai-DFT/releases)。
+1.0.1 先提供本地 Mac ARM64 测试包，尚未上传 GitHub。已发布的旧包见 [0.1.19 下载页](https://github.com/SII-chenlz/Ai-DFT/releases/tag/v0.1.19)，展开 **Assets**，选择与系统对应的 `.tgz`：[Mac arm64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.19/aifs-dsh-0.1.19-macos-arm64-local.tgz)／[Windows x64](https://github.com/SII-chenlz/Ai-DFT/releases/download/v0.1.19/aifs-dsh-0.1.19-windows-x64-local.tgz)。全部版本见 [Releases](https://github.com/SII-chenlz/Ai-DFT/releases)。
 
 1. 打开 DSH 桌面版，在「插件 → 添加插件」填写 `.tgz` 安装包的绝对路径，无需解压。
 2. 启用 AIFS，打开「AIFS 分子计算助手」状态页，等待显示“可用”。
@@ -24,9 +26,23 @@ AIFS 是 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-har
 
 助手只询问缺少的坐标、单位、电荷、自旋、泛函和基组。优化与单点能可以分别选方法。上述需求先交付优化文件；运行后提供优化坐标及其单位，才交付单点文件。
 
-独立计算直接出卡；想留记录可说“保存这次计算”。多步计划和历史卡保存在 `$DSH_HOME/aifs/`，默认 `~/.dsh/aifs/`。运行 REST 前按计算环境设置基组路径。
+独立计算直接出卡；想留记录可说“保存这次计算”。多步计划和历史卡保存在 `$DSH_HOME/aifs/`，默认 `~/.dsh/aifs/`。
+
+桌面输入卡只写基组名，例如 `basis_path = "aug-cc-pVTZ"`，不写生成卡片的电脑路径。REST 在实际运行目录和已配置的基组池中查找；缺文件时会尝试联网下载。离线计算需提前准备基组，辅助基组与续算文件也须在计算机器上可用。
 
 导出的文件放在工作区的 `aifs-inputs/`：独立计算各用一个目录，多步计算按计划、任务分目录。后续文件沿用原目录，保留旧版本。
+
+### 计算机器上的基组
+
+基组由用户选择，`aug-cc-pVTZ` 只是示例。已有 REST 基组池时，在**运行 REST 的电脑或服务器**设置实际目录：
+
+```bash
+export REST_BASIS_DIR="/path/to/basis-set-pool"
+```
+
+Windows PowerShell 使用 `$env:REST_BASIS_DIR = 'D:/REST/basis-set-pool'`。地址换成自己的基组池；池内按基组分目录，REST 查池时使用小写目录名，例如 `aug-cc-pvtz/`。也可继续使用 REST 已配置好的安装基组池，无需额外设置。
+
+基组来源：[Basis Set Exchange](https://www.basissetexchange.org/)。离线运行须准备 REST 所需的基组文件；插件不附带基组。路径查找规则已核对 [REST 源码](https://gitee.com/restgroup/rest/blob/6fa7f3b0b6476fa533dfc38af8b8505730713ac6/src/ctrl_io/path_util.rs)。
 
 ## 三层设计
 
@@ -73,6 +89,5 @@ flowchart TD
 - [产品与开发指南](docs/产品与开发指南.md)：功能、分工、十个工具及改动入口。
 - [开发与打包命令](scripts/README.md)。
 - [安装与数据迁移](packaging/README.md)。
-- [真实对话验收](packaging/local-acceptance.md)。
 
 许可证：[MIT](LICENSE)。

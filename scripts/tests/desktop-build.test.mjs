@@ -23,7 +23,7 @@ async function fixture(run) {
       'dsh-plugin-aifs/src', 'skills', 'scripts/build-desktop-plugin.mjs',
       'scripts/release.mjs', 'scripts/check-contracts.mjs', 'scripts/verify-desktop-import.mjs',
       'packaging/requirements-desktop.lock', 'packaging/README.md',
-      'packaging/local-acceptance.md', 'packaging/rest-coverage.md',
+      'packaging/rest-coverage.md',
     ]
     for (const path of paths) await cp(join(source, path), join(root, path), { recursive: true })
     await symlink(join(source, 'dsh-plugin-aifs/node_modules'), join(root, 'dsh-plugin-aifs/node_modules'), 'junction')

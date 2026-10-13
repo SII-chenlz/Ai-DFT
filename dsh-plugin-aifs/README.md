@@ -60,4 +60,4 @@ npm run typecheck
 
 接口字段从 Python 生成，修改后按 [契约命令](../scripts/README.md#接口与任务维护) 更新并提交生成文件。
 
-单元测试使用 `src/vendor/*.d.ts` 类型声明和 `tests/fixtures/` 替身，不进入运行包。实际产物导入和 DSH 服务由 `verify-desktop-import.mjs`、`verify-desktop-host.mjs` 检查。UI 使用 DSH 通用工具卡；没有自定义 `presentCall`／`presentResult`。打包与真实对话验收见 [脚本文档](../scripts/README.md) 和 [验收表](../packaging/local-acceptance.md)。
+单元测试使用 `src/vendor/*.d.ts` 类型声明和 `tests/fixtures/` 替身，不进入运行包。实际产物导入和 DSH 服务由 `verify-desktop-import.mjs`、`verify-desktop-host.mjs` 检查。UI 使用 DSH 通用工具卡；没有自定义 `presentCall`／`presentResult`。打包命令见 [脚本文档](../scripts/README.md)。

@@ -14,7 +14,7 @@ Python FastAPI 服务负责：
 - 推荐 Python >= 3.11（`tomllib` 为标准库）；3.10 通过 `tomli` 兼容包运行（`pyproject.toml` 中按版本条件安装）。
 - 安装：`python -m pip install -e './backend[dev]'`（开发依赖包含 pytest、httpx、ruff、mypy）。
 - 需要本地语义向量时安装：`python -m pip install -e './backend[retrieval]'`，并配置 `AIFS_EMBEDDING_MODEL`。
-- 配置：`AIFS_BASIS_SET_POOL` 环境变量（或 `.env`，见 `.env.example`）指向部署的 REST 基组池根目录。渲染输入卡必须配置；未配置时 `/v1/rest-inputs` 返回 500 基础设施错误。
+- 配置：`AIFS_BASIS_SET_POOL` 环境变量（或 `.env`，见 `.env.example`）指定输入卡中的基组池根目录，须以实际运行 REST 的机器为准。桌面启动器设置为 `.`，只输出基组名；独立部署未配置时 `/v1/rest-inputs` 返回 500 基础设施错误。
 
 ## 运行与测试
 
@@ -104,7 +104,7 @@ python -m aifs.evidence_cli search \
 - 单卡 `/v1/rest-inputs` 保留目录中的默认基组：自洽场方法默认 `def2-TZVPP`，后自洽场方法默认 `def2-QZVPP`。任务计划出卡必须有明确的 `decision.basis`；仅选泛函、基组为 null 时等待基组决策，不自动套用默认值。方法与解析路径以 `/v1/rest-capabilities` 为准，LDA 等家族名称不能替代具体方法名。
 - 经验色散仅允许 `d3`、`d3bj`、`d4`，通过独立的 `empirical_dispersion` 键输出；双杂化/RPA 类方法（XYG3、XYG7、XYGJOS、xDH-PBE0、sBGE2、ZRPS、scsRPA、R-xDH7、RPA@PBE、RPA@B3LYP）请求色散时返回结构化领域错误（code `empirical_dispersion_not_needed`），绝不静默删除。
 - `spin == 1` 自动推导 `spin_polarization=false`；`spin > 1` 自动推导 `true`；推导结果记录在 `defaults_applied`。
-- `num_threads` 缺省为 10；`basis_path` 由服务端配置 `AIFS_BASIS_SET_POOL` 与最终基组拼接，后端不硬编码本机路径。请求体没有 `basis_set_pool` 字段（传入即 422）；`basis` 只能是池根目录内的相对路径，绝对路径、盘符与 `.`/`..` 段被拒绝（422，code `basis_outside_pool`）。
+- `num_threads` 缺省为 10；`basis_path` 由 `AIFS_BASIS_SET_POOL` 与基组名拼接，使用 `/` 分隔。桌面默认只输出基组名，例如 `aug-cc-pVTZ`，由 REST 查找当前运行目录及安装基组池；不会写入 DSH 数据目录。请求体没有 `basis_set_pool` 字段（传入即 422）；`basis` 只能是池根目录内的相对路径，绝对路径、盘符与 `.`/`..` 段被拒绝（422，code `basis_outside_pool`）。
 - `position` 使用 TOML 三双引号多行字符串输出；渲染器不接受任意 TOML 键值片段。
 - 校验器独立于渲染器：TOML 语法、`[ctrl]`/`[geom]` 存在性、必需字段、字段位置、伪造关键词（`method`/`coord`/`molecule`）、目录成员、数值范围、有限电荷、自旋一致性、色散兼容与坐标格式。未收录的 section 和 keyword 会报告目录缺口并拒绝通过；错误按固定顺序返回，TOML 无法解析时只返回语法错误。
 

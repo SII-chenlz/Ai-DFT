@@ -14,6 +14,8 @@ AIFS 生成输入，不执行计算。当前规则核对至 [REST 源码 `6fa7f3
 | 电多极矩 | `ctrl.analdrv_tasks=["multipole"]`、`[analdrv]` | 1–4 阶、参考原点 Bohr；SCF 支持开放壳层，指定 PT2 家族后 SCF 仅限制性、无冻结芯；密度导出尚未接入 |
 | RRHO / quasi-RRHO 热化学 | Hessian + `[thermo]` / `[ctrl.thermo]` | 温度 K、压力 atm；温压扫描、低频处理、标度、浓度校正 |
 | TDDFT / TDA / 波函数稳定性 | `energy` + `[tddft]` | 限制性 triplet/both 需 AO；非限制性参考不能显式设置 tddft_spin；稳定性与激发任务分开 |
+| GW / BSE | `energy` + `[quasiparticle_methods]` | 限制性 G₀W₀、evGW、rsGW；BSE-TDA / full BSE、singlet/triplet/both、Davidson、低秩围道加速；非限制性仅外推 G₀W₀ 与单耦合通道 UBSE；无 ROHF、无导数与 pair pruning |
+| BSE 专用辅助基组 / LAMB | `quasiparticle_methods.bse_auxbas_path` | 使用已准备的辅助基组目录；与 SCF/GW 的 `ctrl.auxbas_path` 分开；不自动截断角动量，不检查目标机器的文件 |
 | 频域 TDDFT 响应 | `tddft.response_tddft=true` | 限制性参考；外场频率与展宽 Hartree、空间网格 Bohr；不与 FEAST、激发态梯度或 PySOC 混用 |
 | FEAST、PySOC 导出、激发态力 | `[tddft]` 中相应开关 | FEAST 限制性 MO；PySOC 限制性 both/AO；梯度限已声明 HF/LDA/GGA/普通杂化、已计算根内的限制性单通道 `force`，不支持 RSH/mGGA、FEAST 梯度与激发态优化 |
 | 一维／二维 RRS-PBC | `geom.rrs_pbc=true` 及晶胞、向量、平移、k 点字段 | 闭壳层单点后的有限团簇重构，不是周期 SCF；索引从 0 开始，晶格向量沿用坐标单位；三维采样分支未验收 |
@@ -27,7 +29,7 @@ AIFS 生成输入，不执行计算。当前规则核对至 [REST 源码 `6fa7f3
 | 官方 REST 能力 | AIFS 还需完成 |
 | --- | --- |
 | MD / AIMD / QM-MM / pure-MM 与伞形采样 | QM/MM 输入模式、外部文件与原子映射、积分与采样参数、纯 MM 例外必需项 |
-| GW / BSE / UGW / UBSE | 准粒子参数、参考态与通道、续算文件、求解器组合 |
+| GW/BSE 的其他分支 | 响应、SOC、QSGW、动态核、FEAST、激发态导数、完整 checkpoint 续算；非限制性 evGW/rsGW 与非外推 UGW |
 | analdrv 密度导出 | 计划中的显式 fchk 输出、后 SCF 密度附加文件与目标文件存在性 |
 | TDDFT 激发态优化及复杂梯度组合 | RSH／mGGA／FEAST／双通道梯度、优化能量与激发态跟踪；其中当前上游梯度代码明确拒绝 RSH 和 mGGA |
 | 三维 RRS-PBC | 核对上游三维采样索引；实际有限团簇和晶胞匹配、轨道数及数值结果验证 |
@@ -57,6 +59,8 @@ AIFS 生成输入，不执行计算。当前规则核对至 [REST 源码 `6fa7f3
 - LDA 是方法类别，当前 legacy 解析器不接受裸 `LDA`；可选明确的 SVWN、SVWN-RPA、PZ-LDA、PW-LDA 或 LDA_X_SLATER。不能把泛称自动改成其中一种。
 - geomeTRIC 收敛字段实际是 `convergence_*`；README 部分写成 `converge_*`，AIFS 按解析代码校验。
 - 原生 `[thermo]` 压力为 atm；geometric 的 `thermo=[T,P]` 压力为 bar。
+- GW 外推的 `threshold` 未被所核对源码解析；实际使用占据、虚轨道两个 `gw_extrapolate_*_threshold` 窗口，单位 Hartree。BSE 激发通道与基态多重度分开，详见 [GW/BSE 输入说明](../skills/aifs-molecular-planning/references/gw-bse.md)。
+- 新接入 GW/BSE 的十二张教程输入已通过生成与独立校验，未执行 REST 数值计算。准粒子文本文件的保存、读取参数已接入；AIFS 不检查文件内容与当前轨道是否匹配。
 - README、当前 master 与用户安装的 REST 发布版本可能不同。正式运行前应确认目标版本支持输入中的特性。AIFS 当前无 REST 执行环境探测或数值结果验证。
 
 契约位于 `backend/src/aifs/rest/capabilities.py` 与 `catalogs.py`；生成与独立检查分别位于 `renderer.py`、`validator.py`。新增输入更新能力描述、生成器、校验器和测试；现有任务字段不能表达时再扩展工作流。Python 接口字段变化后重新生成插件契约。

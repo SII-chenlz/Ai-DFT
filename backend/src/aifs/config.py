@@ -2,9 +2,9 @@
 
 Settings are read from environment variables (prefix ``AIFS_``) and an
 optional ``.env`` file; see ``.env.example``. The renderer joins the
-deployment's ``AIFS_BASIS_SET_POOL`` with the requested basis name, so
-rendered cards never contain a machine-local path and callers cannot pick a
-pool root of their own.
+deployment's ``AIFS_BASIS_SET_POOL`` with the requested basis name. Desktop
+uses ``.`` to let REST resolve basis names in its own execution environment;
+standalone deployments may configure a target-machine pool explicitly.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    #: Root path of the deployed REST basis set pool.
+    #: Target REST basis pool; desktop uses "." for portable basis names.
     basis_set_pool: str = ""
 
     #: SQLite database containing imported literature records and evidence.

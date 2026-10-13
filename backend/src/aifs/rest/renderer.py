@@ -104,7 +104,9 @@ def render_rest_input(request: RestInputRequest) -> RestInputResponse:
         spin_polarization = request.spin > 1
         defaults_applied.append(f"spin_polarization={str(spin_polarization).lower()}")
 
-    basis_path = str(Path(require_basis_set_pool()) / basis)
+    # Forward slashes also work on Windows and keep REST's basis-name lookup
+    # compatible with cards copied to another operating system.
+    basis_path = (Path(require_basis_set_pool()) / basis).as_posix()
 
     lines: list[str] = ["[ctrl]"]
     lines.append(f"xc = {_escape_toml_string(request.xc, multiline=False)}")

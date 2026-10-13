@@ -6,8 +6,6 @@
 
 桌面插件是当前主入口。需要单独调试 API 时，复制 `.env.example` 为 `.env.local`，设置 AIFS 数据与基组池配置，再运行 `./scripts/start-backend.sh`；`./scripts/check-local.sh` 检查后端生成与校验。
 
-旧 Web 联调脚本不作为本轮维护和桌面验收入口。
-
 ## 打包
 
 构建需要 Python 3.11 和 Node 22；平台后端必须在对应系统上生成。使用固定依赖 `packaging/requirements-desktop.lock`。
@@ -34,7 +32,7 @@ AIFS_UPDATE_LOCAL_PACKAGE=0 node scripts/build-desktop-plugin.mjs --target darwi
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows-local.ps1
 ```
 
-脚本安装固定依赖、构建 `.exe`，检查动态端口、保存／下载、修订、重开持久化和父管道退出，再生成 `dist/aifs-dsh-<版本>-windows-x64-local.tgz` 及 `.sha256`。检查报告位于 `.local/windows-backend-verification.json`。随后在 Windows DSH 安装该包，按 [验收案例](../packaging/local-acceptance.md) 测试真实对话。
+脚本安装固定依赖、构建 `.exe`，检查动态端口、保存／下载、修订、重开持久化和父管道退出，再生成 `dist/aifs-dsh-<版本>-windows-x64-local.tgz` 及 `.sha256`。检查报告位于 `.local/windows-backend-verification.json`。
 
 ### GitHub 构建 Windows 包
 
@@ -42,7 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-windows-loca
 
 成功后在运行页面的 **Artifacts** 下载 `aifs-windows-x64-<运行序号>` ZIP。解压 ZIP，取出其中的 `.tgz`，在 Windows DSH 添加插件时填写该 `.tgz` 的本机绝对路径。ZIP 内还包含 `.sha256` 和验证报告；Artifact 保存 14 天，需要长期留存时请下载保存。
 
-Windows 真实安装与模型对话按验收表另测。
+程序测试和打包检查通过后，仍需在 DSH 测试真实对话：独立计算能直接出卡；多步计算先给当前可用文件，补回正确结果后才给后续文件；缺参数时不猜测。REST 实际运行单独验证。
 
 两个平台共用插件与 Skill，包中只包含对应平台的后端。成功打包只清理同平台、同渠道的旧压缩包，保留其他平台产物。
 
